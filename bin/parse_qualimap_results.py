@@ -7,13 +7,11 @@ import sys
 import pandas as pd
 
 def main(args):
-#    with open(args.genotype_file) as f:
-#        genotype_name = f.readlines()
 
     with open(args.qualimap_bamqc_genome_results, 'r') as f:
-    #with open('qualimap_coreIAS/genome_results.txt', 'r') as f:
+    
         contigs =[]
-    #with open('genome_results.txt','r') as f:    
+     
         output_data = {}
         
         #output_data['genotype'] = genotype_name[0].split("|")[2]

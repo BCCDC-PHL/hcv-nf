@@ -9,9 +9,9 @@ import pandas as pd
 import argparse
 
 def main(args):
-    #bedfile = pd.read_csv("/scratch/sherrie.wang/hcv_round2/amplicons/corens5b/corens5b.bed",sep="\t",header = None)
+    
     bedfile = pd.read_csv(args.bed,sep="\t",header = None)
-    #genotype_file = "genotype_name.txt"
+   
 
     with open(args.name) as f:
         genotype_name = f.readlines()
