@@ -57,10 +57,10 @@ def main(args):
         contig = i.strip()
         
         if len(contig) > 0:
-            data.append([contig.split('\t')[0].split('|')[0].split('_')[0],contig.split('\t')[0].split('|')[0], contig.split('\t')[0].split('|')[1],contig.split('\t')[0].split('|')[2],contig.split('\t')[1],contig.split('\t')[2],contig.split('\t')[3],contig.split('\t')[4]])
+            data.append([contig.split('\t')[0].split('|')[0].split('_')[0],contig.split('\t')[0].split('|')[0], contig.split('\t')[0].split('|')[1],contig.split('\t')[0].split('|')[2],contig.split('\t')[0].split('|')[3],contig.split('\t')[1],contig.split('\t')[2],contig.split('\t')[3],contig.split('\t')[4]])
             
     data_df = pd.DataFrame(data)
-    data_df.columns = ['sample_id', 'contig','segment','subtype','seq_length','total_mapped_bases','mean_coverage','std_coverage']
+    data_df.columns = ['sample_id', 'contig','amplicon','segment','subtype','seq_length','total_mapped_bases','mean_coverage','std_coverage']
     output_data_df = pd.DataFrame(output_data, index=[0])
 
     outdata = data_df.merge(output_data_df,how="left",on='sample_id')

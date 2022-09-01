@@ -1,6 +1,6 @@
 
 process genotype {
-
+    memory { 55.GB }
     tag {sample_id}
 
     publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}/${sample_id}*", mode:'copy', saveAs: { filename -> filename.split("/").last() }
@@ -15,9 +15,10 @@ process genotype {
     tuple val(sample_id), path("${sample_id}/${sample_id}*_report.tsv"), emit: reports, optional: true
     tuple val(sample_id), path("${sample_id}/${sample_id}_blast_results_prefilter.csv"), emit: allblastresult, optional: true
     tuple val(sample_id), path("${sample_id}/${sample_id}_filtered_blast_results.csv"), emit: blastreport, optional: true
-    //tuple val(sample_id), path("${sample_id}/${sample_id}_contigs.fa"), emit: contigs, optional: true
+    tuple val(sample_id), path("${sample_id}/${sample_id}_genotype_calls.csv"), emit: genotyperesult, optional: true
+    tuple val(sample_id), path("${sample_id}/${sample_id}_contigs.fa"), emit: contigs, optional: true
     //tuple val(sample_id), path("${sample_id}/${sample_id}*_trimmed.fastq"), emit: trimfastq, optional: true
-    //tuple val(sample_id), path("${sample_id}/${sample_id}*_ref_seqs_for_mapping.fa*"), emit: refseq, optional: true
+    tuple val(sample_id), path("${sample_id}/${sample_id}*_ref_seqs_for_mapping.fa"), emit: refseq, optional: true
     tuple val(sample_id), path("${sample_id}/${sample_id}_max_bitscores_per_subtype.csv"), emit: mean_bitscores_per_subtype, optional: true
     tuple val(sample_id), path("${sample_id}/${sample_id}_consensus_blast_results.tsv"), emit: consensusmapping, optional: true
     tuple val(sample_id), path("${sample_id}/${sample_id}*_consensus*.fa"), emit: consensus_seqs, optional: true

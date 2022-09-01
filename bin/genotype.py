@@ -28,8 +28,9 @@ def main():
     make_out_dir(args['-o'])
     print('\nGENERATING CONSENSUS SEQS...')
     #trim reads
-    trimmed_reads1,trimmed_reads2 = trim_reads(args['-o'], args['-f'], args['-r'],args['--adapter_sequence'], args['--adapter_sequence_2'])
-    contigs = assemble_contigs(args['-o'], trimmed_reads1, trimmed_reads2)
+    #trimmed_reads1,trimmed_reads2 = trim_reads(args['-o'], args['-f'], args['-r'],args['--adapter_sequence'], args['--adapter_sequence_2'])
+    normalize_reads1,normalize_reads2 = normalize_reads(args['-o'], args['-f'], args['-r'])
+    contigs = assemble_contigs(args['-o'], normalize_reads1, normalize_reads2)
     blast_out = align_contigs_to_ref_seqs(args['-o'], contigs, args['-d'],1)
     blast_results = filter_alignments(args['-o'], blast_out, args['-c'], args['-i'])
     if args['-m'] == 'assemble':
@@ -40,6 +41,9 @@ def main():
     vcf_out = call_variants(args['-o'], args['-D'], args['-q'], ref_seqs, bam_out)
     consensus_seqs = make_consensus_seqs(args['-o'], bam_out, args['-D'], args['-c'], ref_seqs, vcf_out)
     blast_out_consensus = align_contigs_to_ref_seqs(args['-o'],consensus_seqs,args['-d'],2)
+    #do genotype calls
+    genotypes = genotype_call(args['-o'],blast_out_consensus,args['-c'], args['-i'])
+
     print('\nWRITING REPORT...')
     sequenced_bases = count_sequenced_bases_in_consensus_seqs(consensus_seqs)
     consensus_seq_lengths = get_consensus_seq_lengths(consensus_seqs)
@@ -67,7 +71,7 @@ def parse_args(args, version):
     arg_value_types = {'-f': str, '-r': str, '-d': str, '-m': str, '-o': str, '-D': int, '-q': int, '-c': float, '-i': float, '-g': str,'--adapter_sequence':str, '--adapter_sequence_2':str}
     min_arg_values = {'-D': 1, '-q': 0, '-c': 0, '-i': 0}
     max_arg_values = {'-c': 100, '-i': 100}
-    default_arg_values = {'-D': 20, '-q': 30, '-c': 30, '-i': 90, '-g': 'yes','--adapter_sequence':'', '--adapter_sequence_2':''}
+    default_arg_values = {'-D': 20, '-q': 30, '-c': 1, '-i': 90, '-g': 'yes','--adapter_sequence':'', '--adapter_sequence_2':''}
     # Check if all required arguments were provided
     missing_args = set()
     for required_arg in required_args:
@@ -200,22 +204,18 @@ def make_out_dir(out_dir):
             exit(1)
 
 
-def trim_reads(output, fwd_reads,rev_reads,adapt1,adapt2):
-    '''fastp on the raw reads.
-    Returns path to trimmed reads file.'''
-    print('Trim reads into contigs...') 
-    trimmed_reads1 = os.path.join(output, output + '_R1_trimmed.fastq')
-    trimmed_reads2 = os.path.join(output, output + '_R2_trimmed.fastq')
-    if adapt1 =='' and adapt2 =='':
-        terminal_command = f'fastp -i {fwd_reads} -o {trimmed_reads1} -I {rev_reads} -O {trimmed_reads2}'
-    else:
-        terminal_command = f'fastp -i {fwd_reads} -o {trimmed_reads1} -I {rev_reads} -O {trimmed_reads2} --adapter_sequence={adapt1} --adapter_sequence_r2={adapt2}'
-    
-    error_msg = f'fastp terminated with errors. Please refer to /{output}/logs/ for output logs.'
-    stdout_file = os.path.join(output, 'logs', output + '_fastp_stdout.txt')
-    stderr_file = os.path.join(output, 'logs', output + '_fastp_stderr.txt')
+def normalize_reads(output, fwd_reads,rev_reads):
+    '''bbnorm.sh on the trimmed reads.
+    Returns path to normalized reads file.'''
+    print('normalize reads depth for assembly...') 
+    normalize_reads1 = os.path.join(output, output + '_R1_normalized.fastq')
+    normalize_reads2 = os.path.join(output, output + '_R2_normalized.fastq')
+    terminal_command = f'bbnorm.sh in={fwd_reads} in2={rev_reads} out={normalize_reads1} out2={normalize_reads2} target=100 min=5'
+    error_msg = f'bbnorm.sh terminated with errors. Please refer to /{output}/logs/ for output logs.'
+    stdout_file = os.path.join(output, 'logs', output + '_bbnorm_stdout.txt')
+    stderr_file = os.path.join(output, 'logs', output + '_bbnorm_stderr.txt')
     run(terminal_command, error_msg, stdout_file, stderr_file)
-    return trimmed_reads1, trimmed_reads2  
+    return normalize_reads1, normalize_reads2  
 
 
 def assemble_contigs(output, fwd_reads, rev_reads, contig_type='scaffolds'):
@@ -223,16 +223,17 @@ def assemble_contigs(output, fwd_reads, rev_reads, contig_type='scaffolds'):
     Returns path to contigs FASTA file.'''
     print('Assembling reads into contigs...')
     spades_out = os.path.join(output, output + '_spades_results')
-    #terminal_command = f'spades.py --rnaviral --isolate -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'
-    terminal_command = f'spades.py --isolate -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'
+    terminal_command = f'spades.py --rnaviral --isolate -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'
+    #terminal_command = f'spades.py --isolate -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'
     error_msg = f'spades terminated with errors while assembling reads into contigs. Please refer to /{output}/logs/ for output logs.'
     stdout_file = os.path.join(output, 'logs', output + '_spades_stdout.txt')
     stderr_file = os.path.join(output, 'logs', output + '_spades_stderr.txt')
     run(terminal_command, error_msg, stdout_file, stderr_file)
     old_contigs = os.path.join(spades_out, f'{contig_type}.fasta')
     if os.path.exists(old_contigs) == False:
-        print(f'\nDONE: No {contig_type} assembled from reads.')
-        exit(0)
+        print(f'\nDONE: No {contig_type} assembled from reads. use contigs files instead.')
+        old_contigs = os.path.join(spades_out, f'contigs.fasta')
+        #exit(0)
     contigs = os.path.join(output, output + '_contigs.fa')
     sh.copy2(old_contigs, contigs)
     return contigs
@@ -263,6 +264,13 @@ def align_contigs_to_ref_seqs(output, contigs, ref_seqs_db,time):
         exit(0)        
     return blast_out
 
+def condition(x):
+    if x>7500:
+        return "ns5b"
+    elif x<=850:
+        return "core"
+    else:
+        return 'weird'
 
 def filter_alignments(output, blast_out, min_cov, min_id):
     '''Find best contig for each genome segment. Returns datasheet with best contigs.'''
@@ -276,11 +284,14 @@ def filter_alignments(output, blast_out, min_cov, min_id):
     # Discard alignments below minimum identity threshold
 
     blast_results['coverage'] = blast_results['qlen'] * 100 / blast_results['slen']
-    blast_results = blast_results.sort_values(by=['bitscore'],ascending=False)
+    blast_results = blast_results.sort_values(by=['qlen'],ascending=False)
+    blast_results['amplicon'] = blast_results['send'].apply(condition)
     #write out blast results to check all alignments above an identify threshold.
     blast_results.to_csv(os.path.join(output, output + '_blast_results_prefilter.csv'))
     # Keep only best alingments for each contig (by bitscore)
-    blast_results = blast_results[blast_results['pident']>=min_id]
+    blast_results = blast_results[blast_results['qlen'] >= 300]
+    blast_results = blast_results[blast_results['qlen'] <= 420]
+    #blast_results = blast_results[blast_results['pident']>=min_id]
     best_bitscores = blast_results[['qseqid', 'bitscore']].groupby('qseqid').max().reset_index()
     blast_results = pd.merge(blast_results, best_bitscores, on=['qseqid', 'bitscore'])
     # Discard contigs whose best alignments are to multiple segments
@@ -297,20 +308,23 @@ def filter_alignments(output, blast_out, min_cov, min_id):
     #median_slen = blast_results[['qseqid', 'slen']].groupby('qseqid').quantile(0.5, interpolation='higher').reset_index()
     #blast_results = pd.merge(blast_results, median_slen, on=['qseqid', 'slen'])
     # Discard contigs that do not provide minimum coverage of a segment
-    blast_results = blast_results[blast_results['qlen'] * 100 / blast_results['slen'] >= min_cov]
-    blast_results = blast_results[blast_results['qlen'] * 100 / blast_results['slen'] > 100] #remove contigs that is longer than the ref db length
+
+    #blast_results = blast_results[blast_results['qlen'] * 100 / blast_results['slen'] >= min_cov]
+    #blast_results = blast_results[blast_results['qlen'] * 100 / blast_results['slen'] <= 4.5]
+    
     #best_bitscores = blast_results[['subtype', 'bitscore']].groupby('subtype').max().reset_index()
     #blast_results = pd.merge(blast_results, best_bitscores, on=['subtype', 'bitscore'])
 
     # De-duplicate sheet
     #cols = ['qseqid', 'sseqid', 'segment', 'subtype', 'slen','bitscore']
-    blast_results = blast_results.drop_duplicates(['qseqid', 'sseqid', 'segment', 'subtype', 'slen','bitscore'], keep='first')
+    blast_results = blast_results.sort_values(by=['coverage'],ascending=False)
+    blast_results = blast_results.drop_duplicates(['amplicon'], keep='first') #for each end, keep the contig with the best coverage
     
     #blast_results = blast_results[cols].drop_duplicates()
     #blast_results=blast_results.sort_values(by=['bitscore'],ascending =False)
-    seqids = list(blast_results['sseqid'].drop_duplicates())
-    if len(seqids) > 2: #if more than three subtype and segments are present, use the top 2
-        blast_results = blast_results[blast_results['sseqid'].isin(seqids[0:2])]
+    #seqids = list(blast_results['sseqid'].drop_duplicates())
+    #if len(seqids) > 2: #if more than three subtype and segments are present, use the top 2
+    #    blast_results = blast_results[blast_results['sseqid'].isin(seqids[0:2])]
     print(blast_results)
     blast_results.to_csv(os.path.join(output, output + '_filtered_blast_results.csv'))
 
@@ -338,7 +352,7 @@ def write_best_contigs_fasta(output, blast_results, contigs):
     '''Looks up best contigs in contigs FASTA file and writes them to their own FASTA file.
     Returns path to best contigs FASTA file.'''
     # De-duplicate rows from contigs with best alignments to multiple ref seqs 
-    cols = ['qseqid', 'segment', 'subtype', 'slen']
+    cols = ['qseqid', 'segment', 'subtype', 'slen','amplicon']
     blast_results = blast_results[cols].drop_duplicates()
     # Open contigs FASTA and load seqs into dict (key=seq header)
     with open(contigs, 'r') as input_file:
@@ -359,7 +373,8 @@ def write_best_contigs_fasta(output, blast_results, contigs):
             segment = blast_results['segment'][index]
             subtype = blast_results['subtype'][index]
             segment_length = blast_results['slen'][index]
-            header = f'>{output}_seq_{contig_counter}|{segment}|{subtype}|{segment_length}'
+            amplicon = blast_results['amplicon'][index]
+            header = f'>{output}_seq_{contig_counter}|{amplicon}|{segment}|{subtype}|{segment_length}'
             output_file.write(header + '\n')
             output_file.write(contig_seqs[contig_name] + '\n')
             contig_counter += 1
@@ -587,6 +602,26 @@ def count_reads_mapped_to_consensus_seqs(output, bam_out):
     reads_mapped_to_consensus_seqs = reads_mapped_to_consensus_seqs[cols]
     return reads_mapped_to_consensus_seqs
 
+def genotype_call(output, consensus_blast_out, min_cov, min_id):
+    '''Find best contig for each genome segment. Returns datasheet with best contigs.'''
+    print('Filtering alignments...')
+    cols = 'qseqid sseqid pident qlen slen mismatch gapopen qstart qend sstart send bitscore'.split(' ')
+    blast_results = pd.read_csv(consensus_blast_out, sep='\t', names=cols)
+    blast_results['segment'] = blast_results.apply(lambda row: row['sseqid'].split('_')[1], axis=1)
+    blast_results['subtype'] = blast_results.apply(lambda row: row['sseqid'].split('_')[0], axis=1)
+    #blast_results['end'] = blast_results.apply(lambda row: row['sseqid'].split('|')[1], axis=1)
+    # Discard alignments below minimum identity threshold
+
+    blast_results['coverage'] = blast_results['qlen'] * 100 / blast_results['slen']
+    blast_results = blast_results.sort_values(by=['bitscore'],ascending=False)
+    blast_results['amplicon'] = blast_results.apply(lambda row: row['qseqid'].split('|')[1], axis=1)
+    #blast_results = blast_results[blast_results['pident']>=min_id]
+
+    best_bitscores = blast_results[['qseqid','bitscore']].groupby(['qseqid']).max().reset_index()
+    blast_results1 = pd.merge(blast_results, best_bitscores, on=['qseqid', 'bitscore'])
+    blast_results1.to_csv(os.path.join(output, output + '_genotype_calls.csv'))
+
+    return blast_results1
 
 def write_reports(output, sequenced_bases, consensus_seq_lengths, reads_mapped_to_consensus_seqs):
     print('Compiling data for report...')
@@ -595,14 +630,15 @@ def write_reports(output, sequenced_bases, consensus_seq_lengths, reads_mapped_t
     print(consensus_seq_lengths)
     report = pd.merge(reads_mapped_to_consensus_seqs, sequenced_bases, on='consensus_seq')
     report = pd.merge(report, consensus_seq_lengths, on='consensus_seq')
-    report['segment'] = report.apply(lambda row: row['consensus_seq'].split('|')[1], axis=1)
-    report['subtype'] = report.apply(lambda row: row['consensus_seq'].split('|')[2], axis=1)
+    report['amplicon'] = report.apply(lambda row: row['consensus_seq'].split('|')[1], axis=1)
+    report['segment'] = report.apply(lambda row: row['consensus_seq'].split('|')[2], axis=1)
+    report['subtype'] = report.apply(lambda row: row['consensus_seq'].split('|')[3], axis=1)
     report['ref_seq_length'] = report.apply(lambda row: int(row['consensus_seq'].split('|')[-1]), axis=1)
     report['consensus_seq'] = report.apply(lambda row: row['consensus_seq'].split('|')[0], axis=1)
     report['segment_cov'] = round(report['sequenced_bases'] * 100 / report['ref_seq_length'], 2)
     print(report)
     print('Writing consensus seq report...')
-    cols = ['consensus_seq', 'segment', 'subtype', 'mapped_reads', 'seq_length', 'sequenced_bases', 'segment_cov']
+    cols = ['consensus_seq','amplicon', 'segment', 'subtype', 'mapped_reads', 'seq_length', 'sequenced_bases', 'segment_cov']
     contig_report = report[cols].drop_duplicates()
     report_path = os.path.join(output, output + '_consensus_seqs_report.tsv')
     contig_report.to_csv(report_path, sep='\t', index=False)
@@ -629,14 +665,14 @@ def garbage_collection(output):
     sh.rmtree(spades_out)
     blast_out = os.path.join(output, output + '_contigs_blast_results.tsv')
     os.remove(blast_out)
-    contigs = os.path.join(output, output + '_contigs.fa')
-    os.remove(contigs)
+    #contigs = os.path.join(output, output + '_contigs.fa')
+    #os.remove(contigs)
     sam_out = os.path.join(output, output + '_alignment.sam')
     os.remove(sam_out)
     ref_seqs = os.path.join(output, output + '_ref_seqs_for_mapping.fa')
     vcf_out = os.path.join(output, output + '_variants.vcf.gz')
     low_cov = os.path.join(output, output + '_low_cov.bed')
-    files = [ref_seqs + suffix for suffix in ['', '.amb', '.ann', '.bwt', '.fai', '.pac', '.sa']]
+    files = [ref_seqs + suffix for suffix in ['.amb', '.ann', '.bwt', '.fai', '.pac', '.sa']]
     files += [vcf_out + suffix for suffix in ['', '.csi']]
     files += [low_cov]
     for file in files:

@@ -21,8 +21,6 @@ process QualiMap {
 
   script:
   """
-  samtools view ${bamfile} | cut -f3 | sort -u > genotype_name.txt
-  associate_bed_to_bam.py --bed ${params.bedfile} --name genotype_name.txt
-  qualimap bamqc -bam ${bamfile} -gff ${sample_id}_amplicon.bed
+  qualimap bamqc -bam ${bamfile}
   """
 }

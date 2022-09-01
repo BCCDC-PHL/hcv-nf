@@ -21,9 +21,14 @@ coverage <- read_tsv(file = args[1],
          depth = X3) 
 
 sample_id <- strsplit(coverage[1,]$segment,'_')[[1]][1]
-         
+
+coverage$contig = unlist(lapply(coverage[,1]$segment, function(i){
+  strsplit(i,"\\|")[[1]][1]
+}))
+   
 coverage <- coverage %>%
-  separate(segment, into= c("Accession", "ignore1", "ignore2", "ignore3", "segment_name", "subtype", "seg_length"))
+  separate(segment, into= c("Accession", "ignore1", "ignore2", "ignore3","amplicon", "segment_name", "subtype", "seg_length"))
+
 
 
 Accession <- coverage %>%
@@ -42,7 +47,7 @@ p <- coverage %>%
   geom_line()+
   labs(title = Accession)+
   scale_y_log10(labels=comma)+
-  facet_wrap(vars(segment_name, subtype), ncol = 1)
+  facet_wrap(vars(contig, amplicon), ncol = 1)
   
 
 
