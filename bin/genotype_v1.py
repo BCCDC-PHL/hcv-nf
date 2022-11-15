@@ -27,32 +27,36 @@ def main():
     print()
     make_out_dir(args['-o'])
     print('\nGENERATING CONSENSUS SEQS...')
-    #trim reads
-    #trimmed_reads1,trimmed_reads2 = trim_reads(args['-o'], args['-f'], args['-r'],args['--adapter_sequence'], args['--adapter_sequence_2'])
-    normalize_reads1,normalize_reads2 = normalize_reads(args['-o'], args['-f'], args['-r'])
-    contigs = assemble_contigs(args['-o'], normalize_reads1, normalize_reads2)
+
+    #corrected_reads1,corrected_reads2 = error_corrector(args['-o'], args['-f'], args['-r'])
+    #normalize_reads1,normalize_reads2 = normalize_reads(args['-o'], args['-f'], args['-r'])
+    contigs = assemble_contigs(args['-o'], args['-f'], args['-r'])
+    #contigs = assemble_contigs(args['-o'], args['-f'], args['-r'])
+    #contigs_cleaned = cut_amplicon_contigs(args['-o'],contigs)
+    #contigs = assemble_contigs(args['-o'], args['-f'], args['-r'])
     blast_out = align_contigs_to_ref_seqs(args['-o'], contigs, args['-d'],1)
     blast_results = filter_alignments(args['-o'], blast_out, args['-c'], args['-i'])
     if args['-m'] == 'assemble':
         ref_seqs = write_best_contigs_fasta(args['-o'], blast_results, contigs)
+        #best_ref = write_best_ref_seqs_fasta(args['-o'], blast_results, args['-d'])
     elif args['-m'] == 'align':
         ref_seqs = write_best_ref_seqs_fasta(args['-o'], blast_results, args['-d'])
-    bam_out = map_reads(args['-o'], ref_seqs, args['-f'], args['-r'])
-    vcf_out = call_variants(args['-o'], args['-D'], args['-q'], ref_seqs, bam_out)
-    consensus_seqs = make_consensus_seqs(args['-o'], bam_out, args['-D'], args['-c'], ref_seqs, vcf_out)
-    blast_out_consensus = align_contigs_to_ref_seqs(args['-o'],consensus_seqs,args['-d'],2)
+    #bam_out = map_reads(args['-o'], ref_seqs, args['-f'], args['-r'])
+    #vcf_out = call_variants(args['-o'], args['-D'], args['-q'], ref_seqs, bam_out)
+    #consensus_seqs = make_consensus_seqs(args['-o'], bam_out, args['-D'], args['-c'], ref_seqs, vcf_out)
+    #blast_out_consensus = align_contigs_to_ref_seqs(args['-o'],consensus_seqs,args['-d'],2)
     #do genotype calls
-    genotypes = genotype_call(args['-o'],blast_out_consensus,args['-c'], args['-i'])
+    #genotypes = genotype_call(args['-o'],blast_out_consensus,args['-c'], args['-i'])
 
-    print('\nWRITING REPORT...')
-    sequenced_bases = count_sequenced_bases_in_consensus_seqs(consensus_seqs)
-    consensus_seq_lengths = get_consensus_seq_lengths(consensus_seqs)
-    reads_mapped_to_consensus_seqs = count_reads_mapped_to_consensus_seqs(args['-o'], bam_out)
-    write_reports(args['-o'], sequenced_bases, consensus_seq_lengths, reads_mapped_to_consensus_seqs)
-    clean_headers(consensus_seqs)
-    if args['-g'] == 'yes':
-        garbage_collection(args['-o'])
-    print('\nDONE: Analysis finished succesfully.\n')
+    #print('\nWRITING REPORT...')
+    #sequenced_bases = count_sequenced_bases_in_consensus_seqs(consensus_seqs)
+    #consensus_seq_lengths = get_consensus_seq_lengths(consensus_seqs)
+    #reads_mapped_to_consensus_seqs = count_reads_mapped_to_consensus_seqs(args['-o'], bam_out)
+    #write_reports(args['-o'], sequenced_bases, consensus_seq_lengths, reads_mapped_to_consensus_seqs)
+    #clean_headers(consensus_seqs)
+    #if args['-g'] == 'yes':
+    #    garbage_collection(args['-o'])
+    #print('\nDONE: Analysis finished succesfully.\n')
     exit(0)
 
 
@@ -210,6 +214,8 @@ def normalize_reads(output, fwd_reads,rev_reads):
     print('normalize reads depth for assembly...') 
     normalize_reads1 = os.path.join(output, output + '_R1_normalized.fastq')
     normalize_reads2 = os.path.join(output, output + '_R2_normalized.fastq')
+
+    #terminal_command = f'reformat.sh in1={fwd_reads} in2={rev_reads} out1={normalize_reads1} out2={normalize_reads2} samplerate=0.3'
     terminal_command = f'bbnorm.sh in={fwd_reads} in2={rev_reads} out={normalize_reads1} out2={normalize_reads2} target=100 min=5'
     error_msg = f'bbnorm.sh terminated with errors. Please refer to /{output}/logs/ for output logs.'
     stdout_file = os.path.join(output, 'logs', output + '_bbnorm_stdout.txt')
@@ -217,27 +223,59 @@ def normalize_reads(output, fwd_reads,rev_reads):
     run(terminal_command, error_msg, stdout_file, stderr_file)
     return normalize_reads1, normalize_reads2  
 
+def error_corrector(output, fwd_reads, rev_reads):
+    '''correct errors'''
+    print('Error correcting reads')
+    correct_out = os.path.join(output, output + '_spades_error_correct')
+    terminal_command = f'spades.py --only-error-correction -1 {fwd_reads} -2 {rev_reads} -o {correct_out}'
+    error_msg = f'spades terminated with errors while error correcting reads. Please refer to /{output}/logs/ for output logs.'
+    stdout_file = os.path.join(output, 'logs', output + '_spades_correct_stdout.txt')
+    stderr_file = os.path.join(output, 'logs', output + '_spades_correct_stderr.txt')
+    corrected_reads1 = os.path.join(correct_out, 'corrected',output + '_R1.trim.fastq.00.0_0.cor.fastq.gz' )
+    corrected_reads2 = os.path.join(correct_out, 'corrected',output + '_R2.trim.fastq.00.0_0.cor.fastq.gz' )
+    run(terminal_command, error_msg, stdout_file, stderr_file) 
+    return corrected_reads1, corrected_reads2   
+
 
 def assemble_contigs(output, fwd_reads, rev_reads, contig_type='scaffolds'):
     '''Assmebles contigs from fwd_reads and rev_reads FASTQ files. Sends output to spades_out_dir.
     Returns path to contigs FASTA file.'''
     print('Assembling reads into contigs...')
     spades_out = os.path.join(output, output + '_spades_results')
-    terminal_command = f'spades.py --rnaviral --isolate -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'
-    #terminal_command = f'spades.py --isolate -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'
+    terminal_command = f'spades.py --rnaviral --isolate -k 15 21 25 -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'
+    #terminal_command = f'spades.py --careful -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'
     error_msg = f'spades terminated with errors while assembling reads into contigs. Please refer to /{output}/logs/ for output logs.'
     stdout_file = os.path.join(output, 'logs', output + '_spades_stdout.txt')
     stderr_file = os.path.join(output, 'logs', output + '_spades_stderr.txt')
     run(terminal_command, error_msg, stdout_file, stderr_file)
     old_contigs = os.path.join(spades_out, f'{contig_type}.fasta')
     if os.path.exists(old_contigs) == False:
-        print(f'\nDONE: No {contig_type} assembled from reads. use contigs files instead.')
+        print(f'\nDONE: No {contig_type} assembled from reads.')
         old_contigs = os.path.join(spades_out, f'contigs.fasta')
-        #exit(0)
+    #    #exit(0)
     contigs = os.path.join(output, output + '_contigs.fa')
     sh.copy2(old_contigs, contigs)
     return contigs
 
+def cut_amplicon_contigs(output, ref):
+    ''''''
+    print('cut adapters from contigs')
+    cutadapt_out = os.path.join(output, output + '_contigs_cleaned.fa')
+    #terminal_command = f'spades.py --rnaviral --isolate -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'TATGAYACCCGCTGYTTTGACTC
+    #terminal_command = f'cutadapt -g "AGGTCTCGTAGACCGTGCATCATG" --rc -o intermediate1.fa {contigs}'
+    #terminal_command2 = f'cutadapt -b "GTCATCGATACCCTYACRTG" --rc -o intermediate2.fa intermediate1.fa'
+    #terminal_command3 = f'cutadapt -b "CAYGTRAGGGTATCGATGAC" --rc -o intermediate3.fa intermediate2.fa'
+    #terminal_command4 = f'cutadapt -b "GAGGCTATGACBAGRTAYTCNGC" --rc -o {cutadapt_out} intermediate3.fa'
+    terminal_command = f'bbduk.sh in=${ref} out=test_primer_remove.fa literal=AGGTCTCGTAGACCGTGCATCATG,GTCATCGATACCCTYACRTG,CAYGTRAGGGTATCGATGAC,GAGGCTATGACBAGRTAYTCNGC rcomp=t ktrim=rl k=19 mink=9 hdist=1 tpe tbo'
+
+    error_msg = f'cutadapt terminated with errors while assembling reads into contigs. Please refer to /{output}/logs/ for output logs.'
+    stdout_file = os.path.join(output, 'logs', output + '_cutadapt_stdout.txt')
+    stderr_file = os.path.join(output, 'logs', output + '_cutadapt_stderr.txt')
+    run(terminal_command, error_msg, stdout_file, stderr_file)
+    run(terminal_command2, error_msg, stdout_file, stderr_file)
+    run(terminal_command3, error_msg, stdout_file, stderr_file)
+    run(terminal_command4, error_msg, stdout_file, stderr_file)
+    return cutadapt_out
 
 def align_contigs_to_ref_seqs(output, contigs, ref_seqs_db,time):
     '''Align contigs to reference sequences with BLASTn. Returns path to BLASTn results in TSV file.'''
@@ -284,13 +322,14 @@ def filter_alignments(output, blast_out, min_cov, min_id):
     # Discard alignments below minimum identity threshold
 
     blast_results['coverage'] = blast_results['qlen'] * 100 / blast_results['slen']
-    blast_results = blast_results.sort_values(by=['qlen'],ascending=False)
+    blast_results = blast_results.sort_values(by=['bitscore'],ascending=False)
     blast_results['amplicon'] = blast_results['send'].apply(condition)
     #write out blast results to check all alignments above an identify threshold.
     blast_results.to_csv(os.path.join(output, output + '_blast_results_prefilter.csv'))
     # Keep only best alingments for each contig (by bitscore)
-    blast_results = blast_results[blast_results['qlen'] >= 300]
-    blast_results = blast_results[blast_results['qlen'] <= 420]
+    blast_results = blast_results[(blast_results['qlen'] >= 300)]
+    #blast_results = blast_results[(blast_results['qlen'] <= 425)] #increase this range to allow PCR runthrough products wiggle room
+    #blast_results = blast_results[(blast_results['qlen'] <= 420) | (blast_results['qend'] - blast_results['qstart'] >= 300)]
     #blast_results = blast_results[blast_results['pident']>=min_id]
     best_bitscores = blast_results[['qseqid', 'bitscore']].groupby('qseqid').max().reset_index()
     blast_results = pd.merge(blast_results, best_bitscores, on=['qseqid', 'bitscore'])
@@ -317,7 +356,7 @@ def filter_alignments(output, blast_out, min_cov, min_id):
 
     # De-duplicate sheet
     #cols = ['qseqid', 'sseqid', 'segment', 'subtype', 'slen','bitscore']
-    blast_results = blast_results.sort_values(by=['coverage'],ascending=False)
+    blast_results = blast_results.sort_values(by=['bitscore'],ascending=False)
     blast_results = blast_results.drop_duplicates(['amplicon'], keep='first') #for each end, keep the contig with the best coverage
     
     #blast_results = blast_results[cols].drop_duplicates()
@@ -352,19 +391,22 @@ def write_best_contigs_fasta(output, blast_results, contigs):
     '''Looks up best contigs in contigs FASTA file and writes them to their own FASTA file.
     Returns path to best contigs FASTA file.'''
     # De-duplicate rows from contigs with best alignments to multiple ref seqs 
-    cols = ['qseqid', 'segment', 'subtype', 'slen','amplicon']
-    blast_results = blast_results[cols].drop_duplicates()
+    cols = ['qseqid', 'segment','subtype', 'slen','qstart','qend','amplicon']
+    
+    blast_results = blast_results[cols].drop_duplicates(subset=['qseqid', 'segment','subtype', 'slen','amplicon'], keep='first')
+
     # Open contigs FASTA and load seqs into dict (key=seq header)
     with open(contigs, 'r') as input_file:
         contig_seqs = {}
         for line in input_file:
             if line[0] == '>':
-                header = line.strip().lstrip('>')
+                header = line.strip().lstrip('>').rstrip(' rc')
                 contig_seqs[header] = ''
             else:
                 contig_seqs[header] += line.strip()
+
     # Create path for best contigs FASTA
-    best_contigs = os.path.join(output, output + '_ref_seqs_for_mapping.fa')
+    best_contigs = os.path.join(output, output + '_filtered_contigs.fa')
     # Write best contigs to FASTA
     with open(best_contigs, 'w') as output_file:
         contig_counter = 1
@@ -375,6 +417,8 @@ def write_best_contigs_fasta(output, blast_results, contigs):
             segment_length = blast_results['slen'][index]
             amplicon = blast_results['amplicon'][index]
             header = f'>{output}_seq_{contig_counter}|{amplicon}|{segment}|{subtype}|{segment_length}'
+            #if (len(contig_seqs[contig_name]) > 420) & (blast_results['qend'][index] - blast_results['qstart'][index] > 300):
+            #    contig_seqs[contig_name] = contig_seqs[contig_name][(blast_results['qstart'][index]):(blast_results['qend'][index])]
             output_file.write(header + '\n')
             output_file.write(contig_seqs[contig_name] + '\n')
             contig_counter += 1
@@ -413,7 +457,7 @@ def write_best_ref_seqs_fasta(output, blast_results, ref_seqs_db):
             else:
                 ref_seqs[header] += line.strip()
     # Create path for best ref seqs FASTA  
-    best_ref_seqs = os.path.join(output, output + '_ref_seqs_for_mapping.fa')
+    best_ref_seqs = os.path.join(output, output + '_best_ref.fa')
     # Write best ref seqs to FASTA
     with open(best_ref_seqs, 'w') as output_file:
         ref_seq_counter = 1
@@ -452,29 +496,29 @@ def map_reads(output, ref_seqs, fwd_reads, rev_reads):
     stderr_file = os.path.join(output, 'logs', output + '_samtools_view_sort_stderr.txt')
     run(terminal_command, error_msg, stdout_file, stderr_file)
 
-    for x in range(2):
-        #check if bam is empty
-        bam_empty_file = os.path.join(output, output + '_bam_empty.txt')
-        terminal_command = f'samtools view {bam_out} | wc -l > {bam_empty_file}'
-        error_msg = f'samtools view/sort terminated with errors while cat bam file. Please refer to /{output}/logs/ for output logs.'
-        stdout_file = os.path.join(output, 'logs', output + '_samtools_view_stdout.txt')
-        stderr_file = os.path.join(output, 'logs', output + '_samtools_view_stderr.txt')
-        run(terminal_command, error_msg, stdout_file, stderr_file)
-        with open(bam_empty_file) as f:
-            bam_empty = f.readlines()
-        bam_empty = int(bam_empty[0].strip())
+    #for x in range(2):
+    #    #check if bam is empty
+    #    bam_empty_file = os.path.join(output, output + '_bam_empty.txt')
+    #    terminal_command = f'samtools view {bam_out} | wc -l > {bam_empty_file}'
+    #    error_msg = f'samtools view/sort terminated with errors while cat bam file. Please refer to /{output}/logs/ for output logs.'
+    #    stdout_file = os.path.join(output, 'logs', output + '_samtools_view_stdout.txt')
+    #    stderr_file = os.path.join(output, 'logs', output + '_samtools_view_stderr.txt')
+    #    run(terminal_command, error_msg, stdout_file, stderr_file)
+    #    with open(bam_empty_file) as f:
+    #        bam_empty = f.readlines()
+    #    bam_empty = int(bam_empty[0].strip())
 
-        if bam_empty == 0: #if it is empty then remove the filter on proper pair
-            bam_out = os.path.join(output, output + '_alignment_filtered_sorted.bam')
-            terminal_command = f'samtools view -f 1 -F 2828 -q 30 -h {sam_out} | samtools sort -o {bam_out}'
-            if x==1: #allow reads align to multiple segments due to high similarity, so ignore mapping quality 
-                terminal_command = f'samtools view -f 1 -F 2828 -h {sam_out} | samtools sort -o {bam_out}'
-            
-            #terminal_command = f'samtools view -S -b {sam_out} | samtools sort -o {bam_out}'
-            error_msg = f'samtools view/sort terminated with errors while filtering and sorting mapped reads. Please refer to /{output}/logs/ for output logs.'
-            stdout_file = os.path.join(output, 'logs', output + '_samtools_view_sort_stdout.txt')
-            stderr_file = os.path.join(output, 'logs', output + '_samtools_view_sort_stderr.txt')
-            run(terminal_command, error_msg, stdout_file, stderr_file)
+    #    if bam_empty == 0: #if it is empty then remove the filter on proper pair
+    #        bam_out = os.path.join(output, output + '_alignment_filtered_sorted.bam')
+    #        terminal_command = f'samtools view -f 1 -F 2828 -q 30 -h {sam_out} | samtools sort -o {bam_out}'
+    #        if x==1: #allow reads align to multiple segments due to high similarity, so ignore mapping quality 
+    #            terminal_command = f'samtools view -f 1 -F 2828 -h {sam_out} | samtools sort -o {bam_out}'
+    #        
+    #        #terminal_command = f'samtools view -S -b {sam_out} | samtools sort -o {bam_out}'
+    #        error_msg = f'samtools view/sort terminated with errors while filtering and sorting mapped reads. Please refer to /{output}/logs/ for output logs.'
+    #        stdout_file = os.path.join(output, 'logs', output + '_samtools_view_sort_stdout.txt')
+    #        stderr_file = os.path.join(output, 'logs', output + '_samtools_view_sort_stderr.txt')
+    #        run(terminal_command, error_msg, stdout_file, stderr_file)
 
     terminal_command = f'samtools index {bam_out}'
     error_msg = f'samtools index terminated with errors while indexing mapped reads. Please refer to /{output}/logs/ for output logs.'
@@ -609,6 +653,7 @@ def genotype_call(output, consensus_blast_out, min_cov, min_id):
     blast_results = pd.read_csv(consensus_blast_out, sep='\t', names=cols)
     blast_results['segment'] = blast_results.apply(lambda row: row['sseqid'].split('_')[1], axis=1)
     blast_results['subtype'] = blast_results.apply(lambda row: row['sseqid'].split('_')[0], axis=1)
+    blast_results = blast_results[blast_results['pident'] >= 90]
     #blast_results['end'] = blast_results.apply(lambda row: row['sseqid'].split('|')[1], axis=1)
     # Discard alignments below minimum identity threshold
 
@@ -617,8 +662,9 @@ def genotype_call(output, consensus_blast_out, min_cov, min_id):
     blast_results['amplicon'] = blast_results.apply(lambda row: row['qseqid'].split('|')[1], axis=1)
     #blast_results = blast_results[blast_results['pident']>=min_id]
 
-    best_bitscores = blast_results[['qseqid','bitscore']].groupby(['qseqid']).max().reset_index()
+    best_bitscores = blast_results[['qseqid','bitscore']].groupby(['qseqid']).head(10).reset_index()
     blast_results1 = pd.merge(blast_results, best_bitscores, on=['qseqid', 'bitscore'])
+    #blast_results1 = blast_results.sort_values(by=['bitscore'],ascending=False)
     blast_results1.to_csv(os.path.join(output, output + '_genotype_calls.csv'))
 
     return blast_results1

@@ -1,13 +1,21 @@
 #!/usr/bin/env nextflow
 
+import java.time.LocalDateTime
+
 nextflow.enable.dsl = 2
 
-include { fastp } from './modules/fastp.nf'
-include { fastp_json_to_csv } from './modules/fastp.nf'
+include { fastp } from './modules/qc.nf'
+include { fastp_json_to_csv } from './modules/qc.nf'
+include { errorcorrect } from './modules/qc.nf'
+include { cutadapter } from './modules/qc.nf'
+include { bbdukadapter } from './modules/qc.nf'
 include { genotype } from './modules/hcv.nf'
+include { makeconsensus } from './modules/hcv.nf'
+include { findamplicon } from './modules/findamplicon.nf'
 include { QualiMap} from './modules/QualiMap.nf'
 include { parseQMresults} from './modules/parseQMresults.nf'
 include { segcov} from './modules/segcov.nf'
+include { mafftraxmltree } from './modules/mafftraxmltree.nf'
 // prints to the screen and to the log
         log.info """
 
@@ -31,9 +39,17 @@ workflow{
 
     main:
 
-    fastp( ch_fastq_input.combine(ch_adapters))
-    genotype(fastp.out.trimmed_reads)
-    QualiMap(genotype.out.alignment)
+    //fastp(ch_fastq_input.combine(ch_adapters))
+    //fastp_json_to_csv(fastp.out.json)
+    cutadapter(ch_fastq_input)
+    bbdukadapter(cutadapter.out.out_reads)
+  
+    genotype(bbdukadapter.out.cleaned_reads)
+    findamplicon(genotype.out.filtered_contigs)
+    //ch_fastq_input.combine(findamplicon.out.ref_seqs_mapping, by : 0).view()
+    makeconsensus(bbdukadapter.out.cleaned_reads.combine(findamplicon.out.ref_seqs_mapping, by : 0))
+    //mafftraxmltree(genotype.out.consensus_seqs)
+    QualiMap(makeconsensus.out.alignment)
     parseQMresults(QualiMap.out.genome_results)
-    segcov(genotype.out.alignment)
+    segcov(makeconsensus.out.alignment)
 }

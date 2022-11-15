@@ -20,37 +20,95 @@ coverage <- read_tsv(file = args[1],
          position = X2,
          depth = X3) 
 
-sample_id <- strsplit(coverage[1,]$segment,'_')[[1]][1]
-
 coverage$contig = unlist(lapply(coverage[,1]$segment, function(i){
   strsplit(i,"\\|")[[1]][1]
 }))
-   
+
+
+coverage$segment <- gsub("^_R_","",coverage$segment)
+
 coverage <- coverage %>%
-  separate(segment, into= c("Accession", "ignore1", "ignore2", "ignore3","amplicon", "segment_name", "subtype", "seg_length"))
+  separate(segment, into= c("Accession", "ignore1", "ignore2","amplicon", "segment_name", "subtype", "seg_length"))
 
 
 
 Accession <- coverage %>%
   distinct(Accession)
+#sample_id <- strsplit(coverage[1,]$segment,'_')[[1]][1]
 
-
-# Plot coverage:
-# Use a line-plot, with x-axis as position and depth on the y-axis
-# Facet-wrap by segment_name and subtype - hopefully this will grab both when there is more than one 
-# subtype - otherwise it will merge them all together, which we do not want.
-# Use a log10 transform on the y-axis to allow better visualiztion of the range of depths we are likel to see
-# (this was done on ncov tools output)
-# output as a pdf
 p <- coverage %>%
   ggplot(aes(x = position, y = depth))+
   geom_line()+
   labs(title = Accession)+
   scale_y_log10(labels=comma)+
-  facet_wrap(vars(contig, amplicon), ncol = 1)
+  facet_wrap(vars(amplicon), ncol = 1)
+
+
+if(length(unique(coverage$amplicon)) == 2){
+  
+rect<-data.frame(xmin = c(0, 0, 383, 365), xmax = c(24,23,403,388), 
+                 ymin = c(0, 0, 0, 0), ymax = c(2,2,2,2), 
+                 
+                 direction = c("forward","forward","reverse","reverse"))
+
+p_final <-  p + geom_rect(data = transform(rect, amplicon = c("core","ns5b","core","ns5b")),
+              aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill=direction),
+              alpha = 0.5,
+              inherit.aes = FALSE) + theme(legend.position="none") +
+              scale_fill_manual(values = c("forward"="blue","reverse"="red"))
+
+ggsave(plot = p_final, filename = paste0(Accession, "_depth_plots.pdf"), device = "pdf", width = 8, units = "in")
+
+}else{
+  
+  #core_index <- grep("core", attr(consensus,"name")) 
+  
+  #ns5b <- grep("ns5b", attr(consensus,"name")) 
+  
+  
+  if(unique(coverage$amplicon) == "core"){
+    
+    rect<-data.frame(xmin = c(0,0, 383,0), xmax = c(24,0,403,0), 
+                     ymin = c(0,0, 0,0), ymax = c(2,0,2,0), 
+                     
+                     direction = c("forward","forward","reverse","reverse"))
+    
+    p_final <-  p + geom_rect(data = transform(rect, amplicon = c("core","ns5b","core","ns5b")),
+                              aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill=direction),
+                              alpha = 0.5,
+                              inherit.aes = FALSE) + theme(legend.position="none") + 
+      scale_fill_manual(values = c("forward"="blue","reverse"="red"))
+    
+    #p_final
+    
+    ggsave(plot = p_final, filename = paste0(Accession, "_depth_plots.pdf"), device = "pdf", width = 8, units = "in")
+    
+    
+    
+    
+  }
+  
+  if(unique(coverage$amplicon) == "ns5b"){
+    #xmin = c(0, 0, 383, 365), xmax = c(24,23,403,388), 
+    rect<-data.frame(xmin = c(0,0, 0,365), xmax = c(0,23,0,388), 
+                     ymin = c(0,0, 0,0), ymax = c(0,2,0,2), 
+                     
+                     direction = c("forward","forward","reverse","reverse"))
+    
+    p_final <-  p + geom_rect(data = transform(rect, amplicon = c("core","ns5b","core","ns5b")),
+                              aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill=direction),
+                              alpha = 0.5,
+                              inherit.aes = FALSE) + theme(legend.position="none") + 
+      scale_fill_manual(values = c("forward"="blue","reverse"="red"))
+    
+    #p_final
+    
+    ggsave(plot = p_final, filename = paste0(Accession, "_depth_plots.pdf"), device = "pdf", width = 8, units = "in")
+    
+    
+    
+    
+  }
   
 
-
-ggsave(plot = p, filename = paste0(sample_id, "_depth_plots.pdf"), device = "pdf", width = 8, units = "in")
-
-  
+}
