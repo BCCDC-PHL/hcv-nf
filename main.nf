@@ -46,9 +46,8 @@ workflow{
   
     genotype(bbdukadapter.out.cleaned_reads)
     findamplicon(genotype.out.filtered_contigs)
-    //ch_fastq_input.combine(findamplicon.out.ref_seqs_mapping, by : 0).view()
     makeconsensus(bbdukadapter.out.cleaned_reads.combine(findamplicon.out.ref_seqs_mapping, by : 0))
-    //mafftraxmltree(genotype.out.consensus_seqs)
+    mafftraxmltree(genotype.out.consensus_seqs)
     QualiMap(makeconsensus.out.alignment)
     parseQMresults(QualiMap.out.genome_results)
     segcov(makeconsensus.out.alignment)
