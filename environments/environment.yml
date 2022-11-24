@@ -21,3 +21,5 @@ dependencies:
   - perl-list-moreutils=0.430
   - mafft=7.508
   - raxml=8.2.12
+  - cutadapt=4.1
+  - bbmap=38.98

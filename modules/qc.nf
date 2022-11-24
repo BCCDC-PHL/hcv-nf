@@ -67,7 +67,6 @@ process cutadapter {
 
     script:
     """
-    
     cutadapt -b "CTGTCTCTTATACACATCT" -B "AGATGTGTATAAGAGACAG" -o ${sample_id}_R1.out.fastq.gz -p ${sample_id}_R2.out.fastq.gz ${reads_1} ${reads_2}
     
     """
