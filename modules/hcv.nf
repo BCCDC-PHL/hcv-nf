@@ -63,6 +63,7 @@ process makeconsensus {
     tuple val(sample_id), path("${sample_id}/${sample_id}_consensus_blast_results.tsv"), emit: consensusmapping, optional: true
     tuple val(sample_id), path("${sample_id}/${sample_id}_consensus_seqs_report.tsv"), emit: consensus_seqs_report, optional: true
     tuple val(sample_id), path("${sample_id}/${sample_id}_consensus_seqs.fa"), emit: consensus_seqs, optional: true
+    //tuple val(sample_id), path("${sample_id}/${sample_id}_consensus_seqs_noprimers.fa"), emit: consensus_seqsnoprimers, optional: true
     tuple val(sample_id), path("${sample_id}/logs"), emit: fluviewer_logs
 
     """

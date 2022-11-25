@@ -44,8 +44,11 @@ def main():
     bam_out = map_reads(args['-o'], args['-s'], args['-f'], args['-r'])
     vcf_out = call_variants(args['-o'], args['-D'], args['-q'], args['-s'], bam_out)
     consensus_seqs = make_consensus_seqs(args['-o'], bam_out, args['-D'], args['-c'], args['-s'], vcf_out)
-    blast_out_consensus = align_contigs_to_ref_seqs(args['-o'],consensus_seqs,args['-d'],2)
+    
     #do genotype calls
+    consensus_seqs_no_primers = cut_primers(args['-o'],consensus_seqs)
+
+    blast_out_consensus = align_contigs_to_ref_seqs(args['-o'],consensus_seqs_no_primers,args['-d'],2)
     genotypes = genotype_call(args['-o'],blast_out_consensus,args['-c'], args['-i'])
 
     print('\nWRITING REPORT...')
@@ -207,76 +210,6 @@ def make_out_dir(out_dir):
             print('\nERROR: Output directory already exists and is not empty.')
             exit(1)
 
-
-def normalize_reads(output, fwd_reads,rev_reads):
-    '''bbnorm.sh on the trimmed reads.
-    Returns path to normalized reads file.'''
-    print('normalize reads depth for assembly...') 
-    normalize_reads1 = os.path.join(output, output + '_R1_normalized.fastq')
-    normalize_reads2 = os.path.join(output, output + '_R2_normalized.fastq')
-
-    #terminal_command = f'reformat.sh in1={fwd_reads} in2={rev_reads} out1={normalize_reads1} out2={normalize_reads2} samplerate=0.3'
-    terminal_command = f'bbnorm.sh in={fwd_reads} in2={rev_reads} out={normalize_reads1} out2={normalize_reads2} target=100 min=5'
-    error_msg = f'bbnorm.sh terminated with errors. Please refer to /{output}/logs/ for output logs.'
-    stdout_file = os.path.join(output, 'logs', output + '_bbnorm_stdout.txt')
-    stderr_file = os.path.join(output, 'logs', output + '_bbnorm_stderr.txt')
-    run(terminal_command, error_msg, stdout_file, stderr_file)
-    return normalize_reads1, normalize_reads2  
-
-def error_corrector(output, fwd_reads, rev_reads):
-    '''correct errors'''
-    print('Error correcting reads')
-    correct_out = os.path.join(output, output + '_spades_error_correct')
-    terminal_command = f'spades.py --only-error-correction -1 {fwd_reads} -2 {rev_reads} -o {correct_out}'
-    error_msg = f'spades terminated with errors while error correcting reads. Please refer to /{output}/logs/ for output logs.'
-    stdout_file = os.path.join(output, 'logs', output + '_spades_correct_stdout.txt')
-    stderr_file = os.path.join(output, 'logs', output + '_spades_correct_stderr.txt')
-    corrected_reads1 = os.path.join(correct_out, 'corrected',output + '_R1.trim.fastq.00.0_0.cor.fastq.gz' )
-    corrected_reads2 = os.path.join(correct_out, 'corrected',output + '_R2.trim.fastq.00.0_0.cor.fastq.gz' )
-    run(terminal_command, error_msg, stdout_file, stderr_file) 
-    return corrected_reads1, corrected_reads2   
-
-
-def assemble_contigs(output, fwd_reads, rev_reads, contig_type='scaffolds'):
-    '''Assmebles contigs from fwd_reads and rev_reads FASTQ files. Sends output to spades_out_dir.
-    Returns path to contigs FASTA file.'''
-    print('Assembling reads into contigs...')
-    spades_out = os.path.join(output, output + '_spades_results')
-    terminal_command = f'spades.py --rnaviral --isolate -k 15 21 25 -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'
-    #terminal_command = f'spades.py --careful -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'
-    error_msg = f'spades terminated with errors while assembling reads into contigs. Please refer to /{output}/logs/ for output logs.'
-    stdout_file = os.path.join(output, 'logs', output + '_spades_stdout.txt')
-    stderr_file = os.path.join(output, 'logs', output + '_spades_stderr.txt')
-    run(terminal_command, error_msg, stdout_file, stderr_file)
-    old_contigs = os.path.join(spades_out, f'{contig_type}.fasta')
-    if os.path.exists(old_contigs) == False:
-        print(f'\nDONE: No {contig_type} assembled from reads.')
-        old_contigs = os.path.join(spades_out, f'contigs.fasta')
-    #    #exit(0)
-    contigs = os.path.join(output, output + '_contigs.fa')
-    sh.copy2(old_contigs, contigs)
-    return contigs
-
-def cut_amplicon_contigs(output, ref):
-    ''''''
-    print('cut adapters from contigs')
-    cutadapt_out = os.path.join(output, output + '_contigs_cleaned.fa')
-    #terminal_command = f'spades.py --rnaviral --isolate -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'TATGAYACCCGCTGYTTTGACTC
-    #terminal_command = f'cutadapt -g "AGGTCTCGTAGACCGTGCATCATG" --rc -o intermediate1.fa {contigs}'
-    #terminal_command2 = f'cutadapt -b "GTCATCGATACCCTYACRTG" --rc -o intermediate2.fa intermediate1.fa'
-    #terminal_command3 = f'cutadapt -b "CAYGTRAGGGTATCGATGAC" --rc -o intermediate3.fa intermediate2.fa'
-    #terminal_command4 = f'cutadapt -b "GAGGCTATGACBAGRTAYTCNGC" --rc -o {cutadapt_out} intermediate3.fa'
-    terminal_command = f'bbduk.sh in=${ref} out=test_primer_remove.fa literal=AGGTCTCGTAGACCGTGCATCATG,GTCATCGATACCCTYACRTG,CAYGTRAGGGTATCGATGAC,GAGGCTATGACBAGRTAYTCNGC rcomp=t ktrim=rl k=19 mink=9 hdist=1 tpe tbo'
-
-    error_msg = f'cutadapt terminated with errors while assembling reads into contigs. Please refer to /{output}/logs/ for output logs.'
-    stdout_file = os.path.join(output, 'logs', output + '_cutadapt_stdout.txt')
-    stderr_file = os.path.join(output, 'logs', output + '_cutadapt_stderr.txt')
-    run(terminal_command, error_msg, stdout_file, stderr_file)
-    run(terminal_command2, error_msg, stdout_file, stderr_file)
-    run(terminal_command3, error_msg, stdout_file, stderr_file)
-    run(terminal_command4, error_msg, stdout_file, stderr_file)
-    return cutadapt_out
-
 def align_contigs_to_ref_seqs(output, contigs, ref_seqs_db,time):
     '''Align contigs to reference sequences with BLASTn. Returns path to BLASTn results in TSV file.'''
     print(f'Aligning contigs to ref seqs in {ref_seqs_db}...')
@@ -302,175 +235,32 @@ def align_contigs_to_ref_seqs(output, contigs, ref_seqs_db,time):
         exit(0)        
     return blast_out
 
-def condition(x):
-    if x>7500:
-        return "ns5b"
-    elif x<=850:
-        return "core"
-    else:
-        return 'weird'
-
-def filter_alignments(output, blast_out, min_cov, min_id):
-    '''Find best contig for each genome segment. Returns datasheet with best contigs.'''
-    print('Filtering alignments...')
-    cols = 'qseqid sseqid pident qlen slen mismatch gapopen qstart qend sstart send bitscore'.split(' ')
-    blast_results = pd.read_csv(blast_out, sep='\t', names=cols)
-    # Annotate alignments with segment and subtype
-    blast_results['segment'] = blast_results.apply(lambda row: row['sseqid'].split('_')[1], axis=1)
-    blast_results['subtype'] = blast_results.apply(lambda row: row['sseqid'].split('_')[0], axis=1)
-    #blast_results['end'] = blast_results.apply(lambda row: row['sseqid'].split('|')[1], axis=1)
-    # Discard alignments below minimum identity threshold
-
-    blast_results['coverage'] = blast_results['qlen'] * 100 / blast_results['slen']
-    blast_results = blast_results.sort_values(by=['bitscore'],ascending=False)
-    blast_results['amplicon'] = blast_results['send'].apply(condition)
-    #write out blast results to check all alignments above an identify threshold.
-    blast_results.to_csv(os.path.join(output, output + '_blast_results_prefilter.csv'))
-    # Keep only best alingments for each contig (by bitscore)
-    blast_results = blast_results[(blast_results['qlen'] >= 300)]
-    #blast_results = blast_results[(blast_results['qlen'] <= 425)] #increase this range to allow PCR runthrough products wiggle room
-    #blast_results = blast_results[(blast_results['qlen'] <= 420) | (blast_results['qend'] - blast_results['qstart'] >= 300)]
-    #blast_results = blast_results[blast_results['pident']>=min_id]
-    best_bitscores = blast_results[['qseqid', 'bitscore']].groupby('qseqid').max().reset_index()
-    blast_results = pd.merge(blast_results, best_bitscores, on=['qseqid', 'bitscore'])
-    # Discard contigs whose best alignments are to multiple segments
-    #segment_counts = blast_results[['qseqid', 'segment']].drop_duplicates()
-    #segment_counts = segment_counts.groupby('qseqid').size().reset_index()
-    #segment_counts = segment_counts[segment_counts[0]==1][['qseqid']]
-    #blast_results = pd.merge(blast_results, segment_counts, on='qseqid')
-    # Discard contigs whose best alignments are to multiple subtypes
-    #subtype_counts = blast_results[['qseqid', 'subtype']].drop_duplicates()
-    #subtype_counts = subtype_counts.groupby('qseqid').size().reset_index()
-    #subtype_counts = subtype_counts[subtype_counts[0]==1][['qseqid']]
-    #blast_results = pd.merge(blast_results, subtype_counts, on='qseqid')
-    # Keep only alignments between contigs and ref seqs with median segment length
-    #median_slen = blast_results[['qseqid', 'slen']].groupby('qseqid').quantile(0.5, interpolation='higher').reset_index()
-    #blast_results = pd.merge(blast_results, median_slen, on=['qseqid', 'slen'])
-    # Discard contigs that do not provide minimum coverage of a segment
-
-    #blast_results = blast_results[blast_results['qlen'] * 100 / blast_results['slen'] >= min_cov]
-    #blast_results = blast_results[blast_results['qlen'] * 100 / blast_results['slen'] <= 4.5]
-    
-    #best_bitscores = blast_results[['subtype', 'bitscore']].groupby('subtype').max().reset_index()
-    #blast_results = pd.merge(blast_results, best_bitscores, on=['subtype', 'bitscore'])
-
-    # De-duplicate sheet
-    #cols = ['qseqid', 'sseqid', 'segment', 'subtype', 'slen','bitscore']
-    blast_results = blast_results.sort_values(by=['bitscore'],ascending=False)
-    blast_results = blast_results.drop_duplicates(['amplicon'], keep='first') #for each end, keep the contig with the best coverage
-    
-    #blast_results = blast_results[cols].drop_duplicates()
-    #blast_results=blast_results.sort_values(by=['bitscore'],ascending =False)
-    #seqids = list(blast_results['sseqid'].drop_duplicates())
-    #if len(seqids) > 2: #if more than three subtype and segments are present, use the top 2
-    #    blast_results = blast_results[blast_results['sseqid'].isin(seqids[0:2])]
-    print(blast_results)
-    blast_results.to_csv(os.path.join(output, output + '_filtered_blast_results.csv'))
-
-    #parse blast results
-    counts = blast_results['subtype'].value_counts().reset_index()
-    counts=counts.rename(columns = {'subtype' : 'counts','index':'subtype'})
-    total=counts[['counts']].sum()
-    counts['prop'] = counts['counts'].apply(lambda x: x/total)
-    max_bitscore = blast_results[['subtype','bitscore']].groupby('subtype').max().reset_index()
-    bit_df = pd.merge(counts,max_bitscore,how ='left', on='subtype')
-    bit_df=bit_df.rename(columns = {'bitscore': 'max_bitscore'})
-    bit_df.to_csv(os.path.join(output, output + '_max_bitscores_per_subtype.csv'))
-
-    #blast_results = blast_results.head(5)
-    print(blast_results)
-    if len(blast_results) == 0:
-        print('DONE: No valid contigs found.')
-        exit(0)
-
-    #blast_results.to_csv(os.path.join(output, output + '_filtered_blast_results.csv'))
-    return blast_results
-
-
-def write_best_contigs_fasta(output, blast_results, contigs):
-    '''Looks up best contigs in contigs FASTA file and writes them to their own FASTA file.
-    Returns path to best contigs FASTA file.'''
-    # De-duplicate rows from contigs with best alignments to multiple ref seqs 
-    cols = ['qseqid', 'segment','subtype', 'slen','qstart','qend','amplicon']
-    
-    blast_results = blast_results[cols].drop_duplicates(subset=['qseqid', 'segment','subtype', 'slen','amplicon'], keep='first')
-
-    # Open contigs FASTA and load seqs into dict (key=seq header)
-    with open(contigs, 'r') as input_file:
-        contig_seqs = {}
-        for line in input_file:
-            if line[0] == '>':
-                header = line.strip().lstrip('>').rstrip(' rc')
-                contig_seqs[header] = ''
-            else:
-                contig_seqs[header] += line.strip()
-
-    # Create path for best contigs FASTA
-    best_contigs = os.path.join(output, output + '_filtered_contigs.fa')
-    # Write best contigs to FASTA
-    with open(best_contigs, 'w') as output_file:
-        contig_counter = 1
-        for index in blast_results.index:
-            contig_name = blast_results['qseqid'][index]
-            segment = blast_results['segment'][index]
-            subtype = blast_results['subtype'][index]
-            segment_length = blast_results['slen'][index]
-            amplicon = blast_results['amplicon'][index]
-            header = f'>{output}_seq_{contig_counter}|{amplicon}|{segment}|{subtype}|{segment_length}'
-            #if (len(contig_seqs[contig_name]) > 420) & (blast_results['qend'][index] - blast_results['qstart'][index] > 300):
-            #    contig_seqs[contig_name] = contig_seqs[contig_name][(blast_results['qstart'][index]):(blast_results['qend'][index])]
-            output_file.write(header + '\n')
-            output_file.write(contig_seqs[contig_name] + '\n')
-            contig_counter += 1
-    return best_contigs
-
-
-def write_best_ref_seqs_fasta(output, blast_results, ref_seqs_db):
-    '''Looks up best ref seqs in ref seqs DB FASTA file and writes them to their own FASTA file.
-    Returns path to best ref seqs FASTA file.'''
-    # Check if multiple HA or NA subtypes are present
-    #HA_subtypes = blast_results[blast_results['segment']=='HA']['subtype'].unique()
-    #NA_subtypes = blast_results[blast_results['segment']=='NA']['subtype'].unique()
-    #if len(HA_subtypes) > 1 or len(NA_subtypes) > 1:
-        #print('WARNING: Multiple HA or NA subtypes detected. Internal segment sequences are not generated for mixed infections in align mode.')
-        #blast_results = blast_results[blast_results['segment'].isin(['HA', 'NA'])]
-    # Choose ref seqs with max bitscore for each segment/subtype combination
-    best_bitscores = blast_results[['segment', 'subtype', 'bitscore']].groupby(['segment', 'subtype']).max().reset_index()
-    blast_results = pd.merge(blast_results, best_bitscores, on=['segment', 'subtype', 'bitscore'])
-    # Chose ref seqs with median length for each segment/subtype combination
-    median_lengths = blast_results[['segment', 'subtype', 'slen']].groupby(['segment', 'subtype']).quantile(0.5, interpolation='higher').reset_index()
-    blast_results = pd.merge(blast_results, median_lengths, on=['segment', 'subtype', 'slen'])
-    # Choose first alphabetical ref seq for each segment/subtype combination
-    first_ref_seqs = blast_results[['sseqid', 'segment', 'subtype']].groupby(['segment', 'subtype']).min().reset_index()
-    blast_results = pd.merge(blast_results, first_ref_seqs, on=['sseqid', 'segment', 'subtype'])
-    # De-duplicate alignments
-    cols = ['sseqid', 'segment', 'subtype', 'slen']
-    blast_results = blast_results[cols].drop_duplicates()
-    # Open ref seqs DB FASTA and load seqs into dict (key=seq header)
-    with open(ref_seqs_db, 'r') as input_file:
-        ref_seqs = {}
+def cut_primers(output, consensus_seqs):
+    '''Remove primers from consensus sequences before genotyping.'''
+    check_input_exists([consensus_seqs])
+    check_input_empty([consensus_seqs])
+    with open(consensus_seqs, 'r') as input_file:
+        seqs = {}
         for line in input_file:
             if line[0] == '>':
                 header = line.strip().lstrip('>')
-                header = header.split(' ',1)[0]
-                ref_seqs[header] = ''
+                seqs[header] = ''
             else:
-                ref_seqs[header] += line.strip()
-    # Create path for best ref seqs FASTA  
-    best_ref_seqs = os.path.join(output, output + '_best_ref.fa')
-    # Write best ref seqs to FASTA
-    with open(best_ref_seqs, 'w') as output_file:
-        ref_seq_counter = 1
-        for index in blast_results.index:
-            ref_seq_name = blast_results['sseqid'][index]
-            segment = blast_results['segment'][index]
-            subtype = blast_results['subtype'][index]
-            segment_length = blast_results['slen'][index]
-            header = f'>{output}_seq_{ref_seq_counter}|{segment}|{subtype}|{segment_length}'
-            output_file.write(header + '\n')
-            output_file.write(ref_seqs[ref_seq_name] + '\n')
-            ref_seq_counter += 1
-    return best_ref_seqs
+                seqs[header] += line.strip()
+
+    consensus_name = list(seqs.keys())
+    sequences = list(seqs.values())
+    #consensus_seqs_no_primer = os.path.join(output, output + '_consensus_seqs_noprimers.fa')
+    with open(consensus_seqs, 'w') as output_file:
+        for index in range(len(consensus_name)):
+            header = consensus_name[index]
+            if '|core|' in header:
+                sequences[index] = sequences[index][22:382]
+            if '|ns5b|' in header:
+                sequences[index] = sequences[index][22:364]
+            output_file.write('>'+header + '\n')
+            output_file.write(sequences[index]  + '\n')
+    return consensus_seqs
 
 
 def map_reads(output, ref_seqs, fwd_reads, rev_reads):

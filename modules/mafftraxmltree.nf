@@ -1,5 +1,5 @@
 process mafftraxmltree {
-  //errorStrategy 'ignore'
+  errorStrategy 'ignore'
 
   tag { sample_id }
 
