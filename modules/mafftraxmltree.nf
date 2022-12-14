@@ -16,9 +16,9 @@ process mafftraxmltree {
 
   script:
   """
-  grep -A1 core ${consensus} > ${sample_id}_core_consensus.fa
+  grep -A1 '|core|' ${consensus} > ${sample_id}_core_consensus.fa
 
-  grep -A1 ns5b ${consensus} > ${sample_id}_ns5b_consensus.fa
+  grep -A1 '|ns5b|' ${consensus} > ${sample_id}_ns5b_consensus.fa
 
   if [ -s ${sample_id}_core_consensus.fa ]; then
     cat ${params.ref_core} ${sample_id}_core_consensus.fa > mafftinput_core.fa

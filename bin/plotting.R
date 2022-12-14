@@ -36,79 +36,48 @@ Accession <- coverage %>%
   distinct(Accession)
 #sample_id <- strsplit(coverage[1,]$segment,'_')[[1]][1]
 
+coverage$contig <- paste0(coverage$amplicon,"_",coverage$contig)
+
 p <- coverage %>%
   ggplot(aes(x = position, y = depth))+
   geom_line()+
-  labs(title = Accession)+
+  labs(title = paste0(Accession))+
   scale_y_log10(labels=comma)+
-  facet_wrap(vars(amplicon), ncol = 1)
+  facet_wrap(~ contig, ncol = 1)
 
 
-if(length(unique(coverage$amplicon)) == 2){
-  
-rect<-data.frame(xmin = c(0, 0, 383, 365), xmax = c(24,23,403,388), 
-                 ymin = c(0, 0, 0, 0), ymax = c(2,2,2,2), 
-                 
-                 direction = c("forward","forward","reverse","reverse"))
+contigs <- unique(coverage[,c("amplicon","contig")])
 
-p_final <-  p + geom_rect(data = transform(rect, amplicon = c("core","ns5b","core","ns5b")),
-              aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill=direction),
-              alpha = 0.5,
-              inherit.aes = FALSE) + theme(legend.position="none") +
-              scale_fill_manual(values = c("forward"="blue","reverse"="red"))
+direction <- data.frame(amplicon = c("core","core", "ns5b","ns5b"),
+                        direction = c("forward","reverse","forward","reverse"))
+
+rect <- merge(contigs,direction, by = "amplicon")
+
+rect$xmin <- ifelse(rect$amplicon == "core" & rect$direction == "forward", 0 , 
+                    ifelse(rect$amplicon == "core" & rect$direction == "reverse",383,
+                           ifelse(rect$amplicon == "ns5b" & rect$direction =="forward",0,
+                                  ifelse(rect$amplicon =="ns5b" & rect$direction =="reverse",365,NA))))
+
+
+rect$xmax <- ifelse(rect$amplicon == "core" & rect$direction == "forward", 24 , 
+                    ifelse(rect$amplicon == "core" & rect$direction == "reverse",403,
+                           ifelse(rect$amplicon == "ns5b" & rect$direction =="forward",23,
+                                  ifelse(rect$amplicon =="ns5b" & rect$direction =="reverse",388,NA))))
+
+rect$ymin = 0
+rect$ymax = 2
+
+
+
+p_final <-  p + geom_rect(data = rect,
+                          aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill=direction),
+                          alpha = 0.5,
+                          inherit.aes = FALSE) + theme(legend.position="none") +
+  scale_fill_manual(values = c("forward"="blue","reverse"="red"))
+
+
+
 
 ggsave(plot = p_final, filename = paste0(Accession, "_depth_plots.pdf"), device = "pdf", width = 8, units = "in")
 
-}else{
-  
-  #core_index <- grep("core", attr(consensus,"name")) 
-  
-  #ns5b <- grep("ns5b", attr(consensus,"name")) 
-  
-  
-  if(unique(coverage$amplicon) == "core"){
-    
-    rect<-data.frame(xmin = c(0,0, 383,0), xmax = c(24,0,403,0), 
-                     ymin = c(0,0, 0,0), ymax = c(2,0,2,0), 
-                     
-                     direction = c("forward","forward","reverse","reverse"))
-    
-    p_final <-  p + geom_rect(data = transform(rect, amplicon = c("core","ns5b","core","ns5b")),
-                              aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill=direction),
-                              alpha = 0.5,
-                              inherit.aes = FALSE) + theme(legend.position="none") + 
-      scale_fill_manual(values = c("forward"="blue","reverse"="red"))
-    
-    #p_final
-    
-    ggsave(plot = p_final, filename = paste0(Accession, "_depth_plots.pdf"), device = "pdf", width = 8, units = "in")
-    
-    
-    
-    
-  }
-  
-  if(unique(coverage$amplicon) == "ns5b"){
-    #xmin = c(0, 0, 383, 365), xmax = c(24,23,403,388), 
-    rect<-data.frame(xmin = c(0,0, 0,365), xmax = c(0,23,0,388), 
-                     ymin = c(0,0, 0,0), ymax = c(0,2,0,2), 
-                     
-                     direction = c("forward","forward","reverse","reverse"))
-    
-    p_final <-  p + geom_rect(data = transform(rect, amplicon = c("core","ns5b","core","ns5b")),
-                              aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill=direction),
-                              alpha = 0.5,
-                              inherit.aes = FALSE) + theme(legend.position="none") + 
-      scale_fill_manual(values = c("forward"="blue","reverse"="red"))
-    
-    #p_final
-    
-    ggsave(plot = p_final, filename = paste0(Accession, "_depth_plots.pdf"), device = "pdf", width = 8, units = "in")
-    
-    
-    
-    
-  }
-  
 
-}

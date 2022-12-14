@@ -355,10 +355,10 @@ def filter_alignments(output, blast_out, min_cov, min_id):
     #blast_results = pd.merge(blast_results, best_bitscores, on=['subtype', 'bitscore'])
 
     # De-duplicate sheet
-    #cols = ['qseqid', 'sseqid', 'segment', 'subtype', 'slen','bitscore']
+    cols = ['qseqid', 'subtype', 'amplicon']
     blast_results = blast_results.sort_values(by=['bitscore'],ascending=False)
-    blast_results = blast_results.drop_duplicates(['amplicon'], keep='first') #for each end, keep the contig with the best coverage
-    
+    blast_results = blast_results.drop_duplicates(cols, keep='first') #for each end, keep the contig with the best coverage
+    blast_results = blast_results[(abs(blast_results['qend'] - blast_results['qstart']) >= 200)]
     #blast_results = blast_results[cols].drop_duplicates()
     #blast_results=blast_results.sort_values(by=['bitscore'],ascending =False)
     #seqids = list(blast_results['sseqid'].drop_duplicates())
