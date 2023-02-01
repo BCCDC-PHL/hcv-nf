@@ -26,6 +26,7 @@ coverage$contig = unlist(lapply(coverage[,1]$segment, function(i){
 
 
 coverage$segment <- gsub("^_R_","",coverage$segment)
+coverage$segment <- gsub("-","o",coverage$segment)
 
 coverage <- coverage %>%
   separate(segment, into= c("Accession", "ignore1", "ignore2","amplicon", "segment_name", "subtype", "seg_length"))
@@ -78,6 +79,6 @@ p_final <-  p + geom_rect(data = rect,
 
 
 
-ggsave(plot = p_final, filename = paste0(Accession, "_depth_plots.pdf"), device = "pdf", width = 8, units = "in")
+ggsave(plot = p_final, filename = paste0(Accession, "_depth_plots.png"), device = "png", width = 8, units = "in")
 
 

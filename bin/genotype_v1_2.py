@@ -441,23 +441,24 @@ def genotype_call(output, consensus_blast_out, min_cov, min_id):
     print('Filtering alignments...')
     cols = 'qseqid sseqid pident qlen slen mismatch gapopen qstart qend sstart send bitscore'.split(' ')
     blast_results = pd.read_csv(consensus_blast_out, sep='\t', names=cols)
-    blast_results['segment'] = blast_results.apply(lambda row: row['sseqid'].split('_')[1], axis=1)
-    blast_results['subtype'] = blast_results.apply(lambda row: row['sseqid'].split('_')[0], axis=1)
+    #blast_results['segment'] = blast_results.apply(lambda row: row['sseqid'].split('_')[1], axis=1)
+    #blast_results['subtype'] = blast_results.apply(lambda row: row['sseqid'].split('_')[0], axis=1)
     blast_results = blast_results[blast_results['pident'] >= 90]
     #blast_results['end'] = blast_results.apply(lambda row: row['sseqid'].split('|')[1], axis=1)
     # Discard alignments below minimum identity threshold
 
-    blast_results['coverage'] = blast_results['qlen'] * 100 / blast_results['slen']
-    blast_results = blast_results.sort_values(by=['bitscore'],ascending=False)
-    blast_results['amplicon'] = blast_results.apply(lambda row: row['qseqid'].split('|')[1], axis=1)
+    #blast_results['coverage'] = blast_results['qlen'] * 100 / blast_results['slen']
+    #blast_results = blast_results.sort_values(by=['bitscore'],ascending=False)
+    #blast_results['amplicon'] = blast_results.apply(lambda row: row['qseqid'].split('|')[1], axis=1)
     #blast_results = blast_results[blast_results['pident']>=min_id]
 
-    best_bitscores = blast_results[['qseqid','bitscore']].groupby(['qseqid']).head(10).reset_index()
-    blast_results1 = pd.merge(blast_results, best_bitscores, on=['qseqid', 'bitscore'])
+    best_bitscores = blast_results[['qseqid','bitscore']].groupby(['qseqid']).head(10)
+    blast_results = pd.merge(blast_results, best_bitscores, on=['qseqid', 'bitscore'])
+    blast_results = blast_results.drop_duplicates()
     #blast_results1 = blast_results.sort_values(by=['bitscore'],ascending=False)
-    blast_results1.to_csv(os.path.join(output, output + '_genotype_calls.csv'))
+    blast_results.to_csv(os.path.join(output, output + '_genotype_calls.csv'), index=False)
 
-    return blast_results1
+    return blast_results
 
 def write_reports(output, sequenced_bases, consensus_seq_lengths, reads_mapped_to_consensus_seqs):
     print('Compiling data for report...')

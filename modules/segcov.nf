@@ -10,7 +10,7 @@ process segcov {
 
   output:
   tuple val(sample_id), path("*_alignment.coverage"),emit: coverage_file
-  tuple val(sample_id), path("*_depth_plots.pdf"), emit: coverage_plot
+  tuple val(sample_id), path("*_depth_plots.png"), emit: coverage_plot
 
   """
   samtools depth -a ${bamfile} > ${sample_id}_alignment.coverage

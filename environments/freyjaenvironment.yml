@@ -1,0 +1,8 @@
+name: hcv-freyja
+channels:
+- defaults
+- bioconda
+- conda-forge
+
+dependencies:
+- freyja=1.3.12

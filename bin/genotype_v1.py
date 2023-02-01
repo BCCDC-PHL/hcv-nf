@@ -28,13 +28,11 @@ def main():
     make_out_dir(args['-o'])
     print('\nGENERATING CONSENSUS SEQS...')
 
-    #corrected_reads1,corrected_reads2 = error_corrector(args['-o'], args['-f'], args['-r'])
-    #normalize_reads1,normalize_reads2 = normalize_reads(args['-o'], args['-f'], args['-r'])
-    contigs = assemble_contigs(args['-o'], args['-f'], args['-r'])
-    #contigs = assemble_contigs(args['-o'], args['-f'], args['-r'])
-    #contigs_cleaned = cut_amplicon_contigs(args['-o'],contigs)
-    #contigs = assemble_contigs(args['-o'], args['-f'], args['-r'])
+    #norm1,norm2 = normalize_reads(args['-o'], args['-f'], args['-r'])
+    contigs = assemble_contigs(args['-o'],args['-f'], args['-r'])
+
     blast_out = align_contigs_to_ref_seqs(args['-o'], contigs, args['-d'],1)
+
     blast_results = filter_alignments(args['-o'], blast_out, args['-c'], args['-i'])
     if args['-m'] == 'assemble':
         ref_seqs = write_best_contigs_fasta(args['-o'], blast_results, contigs)
@@ -216,25 +214,13 @@ def normalize_reads(output, fwd_reads,rev_reads):
     normalize_reads2 = os.path.join(output, output + '_R2_normalized.fastq')
 
     #terminal_command = f'reformat.sh in1={fwd_reads} in2={rev_reads} out1={normalize_reads1} out2={normalize_reads2} samplerate=0.3'
-    terminal_command = f'bbnorm.sh in={fwd_reads} in2={rev_reads} out={normalize_reads1} out2={normalize_reads2} target=100 min=5'
+    terminal_command = f'bbnorm.sh in={fwd_reads} in2={rev_reads} out={normalize_reads1} out2={normalize_reads2} target=200 min=5'
     error_msg = f'bbnorm.sh terminated with errors. Please refer to /{output}/logs/ for output logs.'
     stdout_file = os.path.join(output, 'logs', output + '_bbnorm_stdout.txt')
     stderr_file = os.path.join(output, 'logs', output + '_bbnorm_stderr.txt')
     run(terminal_command, error_msg, stdout_file, stderr_file)
     return normalize_reads1, normalize_reads2  
 
-def error_corrector(output, fwd_reads, rev_reads):
-    '''correct errors'''
-    print('Error correcting reads')
-    correct_out = os.path.join(output, output + '_spades_error_correct')
-    terminal_command = f'spades.py --only-error-correction -1 {fwd_reads} -2 {rev_reads} -o {correct_out}'
-    error_msg = f'spades terminated with errors while error correcting reads. Please refer to /{output}/logs/ for output logs.'
-    stdout_file = os.path.join(output, 'logs', output + '_spades_correct_stdout.txt')
-    stderr_file = os.path.join(output, 'logs', output + '_spades_correct_stderr.txt')
-    corrected_reads1 = os.path.join(correct_out, 'corrected',output + '_R1.trim.fastq.00.0_0.cor.fastq.gz' )
-    corrected_reads2 = os.path.join(correct_out, 'corrected',output + '_R2.trim.fastq.00.0_0.cor.fastq.gz' )
-    run(terminal_command, error_msg, stdout_file, stderr_file) 
-    return corrected_reads1, corrected_reads2   
 
 
 def assemble_contigs(output, fwd_reads, rev_reads, contig_type='scaffolds'):
@@ -257,25 +243,6 @@ def assemble_contigs(output, fwd_reads, rev_reads, contig_type='scaffolds'):
     sh.copy2(old_contigs, contigs)
     return contigs
 
-def cut_amplicon_contigs(output, ref):
-    ''''''
-    print('cut adapters from contigs')
-    cutadapt_out = os.path.join(output, output + '_contigs_cleaned.fa')
-    #terminal_command = f'spades.py --rnaviral --isolate -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'TATGAYACCCGCTGYTTTGACTC
-    #terminal_command = f'cutadapt -g "AGGTCTCGTAGACCGTGCATCATG" --rc -o intermediate1.fa {contigs}'
-    #terminal_command2 = f'cutadapt -b "GTCATCGATACCCTYACRTG" --rc -o intermediate2.fa intermediate1.fa'
-    #terminal_command3 = f'cutadapt -b "CAYGTRAGGGTATCGATGAC" --rc -o intermediate3.fa intermediate2.fa'
-    #terminal_command4 = f'cutadapt -b "GAGGCTATGACBAGRTAYTCNGC" --rc -o {cutadapt_out} intermediate3.fa'
-    terminal_command = f'bbduk.sh in=${ref} out=test_primer_remove.fa literal=AGGTCTCGTAGACCGTGCATCATG,GTCATCGATACCCTYACRTG,CAYGTRAGGGTATCGATGAC,GAGGCTATGACBAGRTAYTCNGC rcomp=t ktrim=rl k=19 mink=9 hdist=1 tpe tbo'
-
-    error_msg = f'cutadapt terminated with errors while assembling reads into contigs. Please refer to /{output}/logs/ for output logs.'
-    stdout_file = os.path.join(output, 'logs', output + '_cutadapt_stdout.txt')
-    stderr_file = os.path.join(output, 'logs', output + '_cutadapt_stderr.txt')
-    run(terminal_command, error_msg, stdout_file, stderr_file)
-    run(terminal_command2, error_msg, stdout_file, stderr_file)
-    run(terminal_command3, error_msg, stdout_file, stderr_file)
-    run(terminal_command4, error_msg, stdout_file, stderr_file)
-    return cutadapt_out
 
 def align_contigs_to_ref_seqs(output, contigs, ref_seqs_db,time):
     '''Align contigs to reference sequences with BLASTn. Returns path to BLASTn results in TSV file.'''
@@ -400,7 +367,7 @@ def write_best_contigs_fasta(output, blast_results, contigs):
         contig_seqs = {}
         for line in input_file:
             if line[0] == '>':
-                header = line.strip().lstrip('>').rstrip(' rc')
+                header = line.strip().lstrip('>').rstrip(' rc').split(' ')[0]
                 contig_seqs[header] = ''
             else:
                 contig_seqs[header] += line.strip()
@@ -417,8 +384,6 @@ def write_best_contigs_fasta(output, blast_results, contigs):
             segment_length = blast_results['slen'][index]
             amplicon = blast_results['amplicon'][index]
             header = f'>{output}_seq_{contig_counter}|{amplicon}|{segment}|{subtype}|{segment_length}'
-            #if (len(contig_seqs[contig_name]) > 420) & (blast_results['qend'][index] - blast_results['qstart'][index] > 300):
-            #    contig_seqs[contig_name] = contig_seqs[contig_name][(blast_results['qstart'][index]):(blast_results['qend'][index])]
             output_file.write(header + '\n')
             output_file.write(contig_seqs[contig_name] + '\n')
             contig_counter += 1
