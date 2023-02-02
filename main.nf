@@ -50,7 +50,7 @@ workflow{
 
     maprawreads(cutadapter.out.out_reads.combine(ch_db))
     mapreadstoref(cutadapter.out.out_reads.combine(ch_ref))
-    mixscan(mapreadstoref.out.alignment.combine(ch_ref))
+    ch_mix = mixscan(mapreadstoref.out.alignment.combine(ch_ref))
     genotype(cutadapter.out.out_reads)
     findamplicon(genotype.out.filtered_contigs)
     ch_consensus = makeconsensus(cutadapter.out.out_reads.combine(findamplicon.out.ref_seqs_mapping, by : 0))
@@ -63,11 +63,14 @@ workflow{
         .collectFile(it -> it[1], name: "combined_genotype_calls.csv", storeDir: params.outdir, keepHeader: true, skip: 1)
        // .view { file -> "matching sequences:\n ${file.text}" }
     ch_consensus.consensus_seqs_report
-            .collectFile(it -> it[1], name: "combined_consensus_seqs_report.tsv", storeDir: params.outdir, keepHeader: true, skip: 1)
+        .collectFile(it -> it[1], name: "combined_consensus_seqs_report.tsv", storeDir: params.outdir, keepHeader: true, skip: 1)
     //    .collectFile(name: "combined_consensus_seqs_report", storeDir: params.outdir)
 
+    ch_mix.demix_report
+        .collectFile(it -> it[1], name: "combined_demix_report.csv", storeDir: params.outdir, keepHeader: true, skip: 1)
+
     ch_qc
-    .collectFile(it -> it[1], name: "combined_qc_stats.csv", storeDir: params.outdir, keepHeader: true, skip: 1)
+        .collectFile(it -> it[1], name: "combined_qc_stats.csv", storeDir: params.outdir, keepHeader: true, skip: 1)
     //    .collectFile(name: "combined_qc_stats", storeDir: params.outdir)
 
     

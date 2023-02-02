@@ -74,6 +74,9 @@ def demix(variants, depths, output, eps, barcodes, covcut):
     sols_df['abundances'] = ' '.join(sols_df['abundances'])
     sols_df.to_csv(output, sep='\t')
 
+    result = pd.DataFrame(data=[[args.sample,localDict]], columns=['sample_id','demix_results'])
+    result.to_csv(args.sample+'_demix.csv',index = False)
+
 def main(args):
     demix(args.variants, args.depths, args.output, args.eps, args.barcodes, args.covcut)
 
@@ -85,6 +88,7 @@ if __name__ == "__main__":
     parser.add_argument('--eps', default=1e-3, help='minimum abundance to include')
     parser.add_argument('--barcodes', default='-1', help='custom barcode file')
     parser.add_argument('--output', default='demixing_result.csv', help='Output file')
+    parser.add_argument('--sample', default='', help='Output file')
     parser.add_argument('--covcut', default=10, help='depth cutoff for\
                                             coverage estimate')
     args = parser.parse_args()
