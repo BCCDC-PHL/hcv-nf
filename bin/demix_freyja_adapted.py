@@ -25,7 +25,7 @@ def demix(variants, depths, output, eps, barcodes, covcut):
     if barcodes != '-1':
         df_barcodes = pd.read_csv(barcodes, index_col=0)
     else:
-        df_barcodes = pd.read_csv(os.path.join(locDir,'data/barcodes_hcv.csv'), index_col=0)
+        df_barcodes = pd.read_csv(os.path.join(locDir,'data/barcodes_core.csv'), index_col=0)
 
     muts = list(df_barcodes.columns)
     #mapDict = buildLineageMap(meta)
@@ -60,8 +60,9 @@ def demix(variants, depths, output, eps, barcodes, covcut):
                                 reverse=True))
         sample_strains = list(localDict.keys())
         abundances = list(localDict.values())
-
+    
     localDict = map_to_constellation(sample_strains, abundances, dicts)
+    
     # assemble into series and write.
     sols_df = pd.Series(data=(localDict,sample_strains, abundances,
                               error, cov),
@@ -71,10 +72,18 @@ def demix(variants, depths, output, eps, barcodes, covcut):
     # convert lineage/abundance readouts to single line strings
     sols_df['lineages'] = ' '.join(sols_df['lineages'])
     sols_df['abundances'] = ['%.8f' % ab for ab in sols_df['abundances']]
-    sols_df['abundances'] = ' '.join(sols_df['abundances'])
+    
     sols_df.to_csv(output, sep='\t')
+    
+    reformated = []
+    for i in localDict:
+        i_ls = list(i)
+        i_ls[1] = '%.4f' % i_ls[1]
+        i = tuple(i_ls)
+        reformated.append(i)
 
-    result = pd.DataFrame(data=[[args.sample,localDict]], columns=['sample_id','demix_results'])
+
+    result = pd.DataFrame(data=[[args.sample,reformated]], columns=['sample_id','demix_results'])
     result.to_csv(args.sample+'_demix.csv',index = False)
 
 def main(args):

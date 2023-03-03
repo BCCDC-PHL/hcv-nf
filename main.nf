@@ -54,7 +54,7 @@ workflow{
     genotype(cutadapter.out.out_reads)
     findamplicon(genotype.out.filtered_contigs)
     ch_consensus = makeconsensus(cutadapter.out.out_reads.combine(findamplicon.out.ref_seqs_mapping, by : 0))
-    //mafftraxmltree(makeconsensus.out.consensus_seqs)
+    mafftraxmltree(makeconsensus.out.consensus_seqs)
     QualiMap(makeconsensus.out.alignment)
     ch_qc = parseQMresults(QualiMap.out.genome_results)
     segcov(makeconsensus.out.alignment)
