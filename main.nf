@@ -20,6 +20,7 @@ include { QualiMap} from './modules/QualiMap.nf'
 include { parseQMresults} from './modules/parseQMresults.nf'
 include { segcov} from './modules/segcov.nf'
 include { mafftraxmltree } from './modules/mafftraxmltree.nf'
+include { report } from './modules/report.nf'
 // prints to the screen and to the log
         log.info """
 
@@ -39,14 +40,14 @@ workflow{
     ch_db = Channel.fromPath(params.db)
     ch_ref = Channel.fromPath(params.refhcv)
     ch_fastq_input = Channel.fromFilePairs(params.fastq_input + '/*_{R1,R2}*.fastq.gz', flat: true ).map{ it -> [it[0].split('_')[0], it[1], it[2]] }.unique{ it -> it[0] }
-    
-    //ch_fastq_input.view()
+    ch_basic_qc = Channel.fromPath(params.basic_qc)
+    ch_abundance_top_n = Channel.fromPath(params.abundance_top_n)
 
     main:
 
     fastp( ch_fastq_input )
     cutadapter(fastp.out.trimmed_reads.combine(ch_adapters))
-    //bbdukadapter(cutadapter.out.out_reads)
+    
 
     maprawreads(cutadapter.out.out_reads.combine(ch_db))
     mapreadstoref(cutadapter.out.out_reads.combine(ch_ref))
@@ -59,19 +60,22 @@ workflow{
     ch_qc = parseQMresults(QualiMap.out.genome_results)
     segcov(makeconsensus.out.alignment)
 
-    ch_consensus.genotyperesult
+    ch_combined_genotype = ch_consensus.genotyperesult
         .collectFile(it -> it[1], name: "combined_genotype_calls.csv", storeDir: params.outdir, keepHeader: true, skip: 1)
-       // .view { file -> "matching sequences:\n ${file.text}" }
-    ch_consensus.consensus_seqs_report
-        .collectFile(it -> it[1], name: "combined_consensus_seqs_report.tsv", storeDir: params.outdir, keepHeader: true, skip: 1)
-    //    .collectFile(name: "combined_consensus_seqs_report", storeDir: params.outdir)
 
-    ch_mix.demix_report
+    ch_combined_consensus = ch_consensus.consensus_seqs_report
+        .collectFile(it -> it[1], name: "combined_consensus_seqs_report.tsv", storeDir: params.outdir, keepHeader: true, skip: 1)
+
+    ch_combined_demix = ch_mix.demix_report
         .collectFile(it -> it[1], name: "combined_demix_report.csv", storeDir: params.outdir, keepHeader: true, skip: 1)
 
-    ch_qc
+    ch_combined_qc = ch_qc
         .collectFile(it -> it[1], name: "combined_qc_stats.csv", storeDir: params.outdir, keepHeader: true, skip: 1)
-    //    .collectFile(name: "combined_qc_stats", storeDir: params.outdir)
+        
+    ch_fastqlist = ch_fastq_input
+        .collectFile(it -> it[0], name: "fastqlist", storeDir: params.outdir,newLine: true)
+
+    report(ch_fastqlist.combine(ch_combined_genotype).combine(ch_combined_consensus).combine(ch_combined_demix).combine(ch_combined_qc).combine(ch_basic_qc).combine(ch_abundance_top_n))
 
     
 }

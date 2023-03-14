@@ -11,12 +11,9 @@ process fastp {
     output:
     tuple val(sample_id), path("${sample_id}_R1.trim.fastq.gz"), path("${sample_id}_R2.trim.fastq.gz"), emit: trimmed_reads
     tuple val(sample_id),path("${sample_id}_fastp.json"), emit: json
-    tuple val(sample_id),path("fastqlist"), emit: fastqlist
 
     script:
     """      
-    ls ${params.fastq_input} | cut -d'_' -f1 | sort -u > fastqlist
-
     fastp \
       -t ${task.cpus} \
       -i ${reads_1} \
