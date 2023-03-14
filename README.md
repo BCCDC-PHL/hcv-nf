@@ -21,13 +21,13 @@ nextflow run BCCDC-PHL/hcv_nf \
 ### Input
 
 The required inputs are:
--fastq input directory
--path to the full length HCV reference database
--path to reference database that have core side extraced
--path to reference database that have ns5b side extraced
--path to basic_qc_stats.csv which is the output of the pipeline BCCDC-PHL basic_qc
--path to abundance top 5 which is the output of the routine sequence qc pipeline maintained by BCCDC-PHL
--outdir directory to store the results
+- fastq input directory
+- path to the full length HCV reference database
+- path to reference database that have core side extraced
+- path to reference database that have ns5b side extraced
+- path to basic_qc_stats.csv which is the output of the pipeline BCCDC-PHL basic_qc
+- path to abundance top 5 which is the output of the routine sequence qc pipeline maintained by BCCDC-PHL
+- outdir directory to store the results
 
 
 ### Output
