@@ -12,8 +12,9 @@ include { normalize } from './modules/qc.nf'
 include { bbdukadapter } from './modules/qc.nf'
 include { genotype } from './modules/hcv.nf'
 include { makeconsensus } from './modules/hcv.nf'
-include { maprawreads } from './modules/hcv.nf'
-include {mapreadstoref} from './modules/hcv.nf'
+include { maprawreads } from './modules/debug.nf'
+include { plotdepthdb } from './modules/debug.nf'
+include {mapreadstoref} from './modules/mix.nf'
 include { mixscan } from './modules/mix.nf'
 include { findamplicon } from './modules/findamplicon.nf'
 include { QualiMap} from './modules/QualiMap.nf'
@@ -49,8 +50,10 @@ workflow{
     cutadapter(fastp.out.trimmed_reads.combine(ch_adapters))
     
 
-    maprawreads(cutadapter.out.out_reads.combine(ch_db))
-    mapreadstoref(cutadapter.out.out_reads.combine(ch_ref))
+    ch_maprawreads = maprawreads(cutadapter.out.out_reads.combine(ch_db)) //mapping raw reads to all 237 HCV references for debugging purposes, checking how reads mapped to core/ns5b regions
+                                                         // to explain failed assembly
+    mapreadstoref(cutadapter.out.out_reads.combine(ch_ref)) //mapping raw reads to ref 1_AJ851228 for mix variant scan purpose
+    plotdepthdb(ch_maprawreads.dbdepth)
     ch_mix = mixscan(mapreadstoref.out.alignment.combine(ch_ref))
     genotype(cutadapter.out.out_reads)
     findamplicon(genotype.out.filtered_contigs)
@@ -74,6 +77,8 @@ workflow{
         
     ch_fastqlist = ch_fastq_input
         .collectFile(it -> it[0], name: "fastqlist", storeDir: params.outdir,newLine: true)
+    ch_count_mapped_reads = ch_maprawreads.mappedreads
+        .collectFile(it -> it[1], name: "combined_amplicon_mapped_reads_counts.csv", storeDir:params.outdir, keepHeader: true, skip: 1)
 
     report(ch_fastqlist.combine(ch_combined_genotype).combine(ch_combined_consensus).combine(ch_combined_demix).combine(ch_combined_qc).combine(ch_basic_qc).combine(ch_abundance_top_n))
 

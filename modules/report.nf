@@ -9,7 +9,8 @@ process report {
     path("run_summary_report.csv")
 
     """
-    report.py --fastqlist ${fastqlist} --genotype_calls ${combined_genotype} --consensus_report ${combined_consensus} --demix_report ${combined_demix} --qc_report ${combined_qc} --basic_qc ${basic_qc} --abundance_top_n ${abundance_top_n} 
+    report.py --fastqlist ${fastqlist} --genotype_calls ${combined_genotype} --consensus_report ${combined_consensus} \
+    --demix_report ${combined_demix} --qc_report ${combined_qc} --basic_qc ${basic_qc} --abundance_top_n ${abundance_top_n} --prefix ${params.prefix}
 
     """
 

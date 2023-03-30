@@ -19,6 +19,7 @@ def main(args):
     qc_report = pd.read_csv(args.qc_report)
     basic_qc = pd.read_csv(args.basic_qc)
     abundance = pd.read_csv(args.abundance_top_n)
+    mapped_reads_counts = pd.read_csv(args.reads_counts)
 
     with open(args.fastqlist) as f:
         fqlist = f.readlines()
@@ -28,6 +29,7 @@ def main(args):
     fqlist_df = pd.DataFrame(fqlist, columns = ['sample_id'])
 
     #process consensus result
+    #print(consensus_report)
     consensus_report['sample_id'] = consensus_report['consensus_seq'].apply(lambda x: re.sub("^_R_","", x))
     consensus_report['sample_id'] = consensus_report['sample_id'].apply(lambda x: x.split('_')[0])
 
@@ -91,35 +93,37 @@ def main(args):
     merge3 = pd.merge(merge2, best_gt_spread, on='sample_id',how='left')
     merge4 = pd.merge(merge3, second_gt_spread, on='sample_id',how='left')
     merge5 = pd.merge(merge4, demix_report, on='sample_id',how='left')
+    merge6 = pd.merge(merge5, mapped_reads_counts, on='sample_id',how='left')
 
     conditions = [
-      (merge5['abundance_1_name'] == "Hepacivirus C"),
-      (merge5['abundance_2_name'] == "Hepacivirus C"),
-      (merge5['abundance_3_name'] == "Hepacivirus C"),
-      (merge5['abundance_4_name'] == "Hepacivirus C"),
-      (merge5['abundance_5_name'] == "Hepacivirus C")
+      (merge6['abundance_1_name'] == "Hepacivirus C"),
+      (merge6['abundance_2_name'] == "Hepacivirus C"),
+      (merge6['abundance_3_name'] == "Hepacivirus C"),
+      (merge6['abundance_4_name'] == "Hepacivirus C"),
+      (merge6['abundance_5_name'] == "Hepacivirus C")
     ]
-    choices = [merge5['abundance_1_fraction_total_reads']* merge5['total_bases'],merge5['abundance_2_fraction_total_reads']*merge5['total_bases'],merge5['abundance_3_fraction_total_reads']* merge5['total_bases'],merge5['abundance_4_fraction_total_reads']* merge5['total_bases'],merge5['abundance_5_fraction_total_reads']* merge5['total_bases']]
-    merge5['hcv_bases'] =  np.select(conditions,choices,default=0) 
-    #print(merge5)
+    choices = [merge6['abundance_1_fraction_total_reads']* merge6['total_bases'],merge6['abundance_2_fraction_total_reads']*merge6['total_bases'],merge6['abundance_3_fraction_total_reads']* merge6['total_bases'],merge6['abundance_4_fraction_total_reads']* merge6['total_bases'],merge6['abundance_5_fraction_total_reads']* merge6['total_bases']]
+    merge6['hcv_bases'] =  np.select(conditions,choices,default=0) 
     #FLAGGING samples
     conditions = [
         #~(merge5['most_abundant_species_name'] == "Hepacivirus C"),#check if hcv is not the most abundant, even for negative controls
-        (merge5['hcv_bases'] < 22000),
-        (merge5['core_subtype'].isna() | merge5['ns5b_subtype'].isna()),
-        ~(merge5['core_subtype'] == merge5['ns5b_subtype']) & (merge5['core_subtype'].notna() & merge5['ns5b_subtype'].notna()),
-        (merge5['ns5b_sequenced_bases'].notna()) & (merge5['ns5b_sequenced_bases'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 300),
-        (merge5['core_sequenced_bases'].notna()) & (merge5['core_sequenced_bases'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 300),
-        (merge5['core_mean_coverage'].notna()) & (merge5['core_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 20),
-        (merge5['ns5b_mean_coverage'].notna()) & (merge5['ns5b_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 20)
+        (merge6['hcv_bases'] < 22000),
+        (merge6['core_mapped_reads'] < 10),
+        (merge6['ns5b_mapped_reads'] < 10),
+        (merge6['core_subtype'].isna() | merge6['ns5b_subtype'].isna()),
+        ~(merge6['core_subtype'] == merge6['ns5b_subtype']) & (merge6['core_subtype'].notna() & merge6['ns5b_subtype'].notna()),
+        (merge6['ns5b_sequenced_bases'].notna()) & (merge6['ns5b_sequenced_bases'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 300),
+        (merge6['core_sequenced_bases'].notna()) & (merge6['core_sequenced_bases'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 300),
+        (merge6['core_mean_coverage'].notna()) & (merge6['core_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 20),
+        (merge6['ns5b_mean_coverage'].notna()) & (merge6['ns5b_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 20)
         
     ]
 
-    choices = ['Check - low HCV content','Check - missing core/ns5b subtype', 'Check - mismatch core/ns5b subtypes','Check - ns5b sequenced bases','Check - core sequenced bases', 'Check - core mean coverage < 20', 'Check - ns5b mean coverage < 20']
+    choices = ['Check - low HCV content','Check - core low mapped reads','Check - core low mapped reads', 'Check - missing core/ns5b subtype', 'Check - mismatch core/ns5b subtypes','Check - ns5b sequenced bases','Check - core sequenced bases', 'Check - core mean coverage < 20', 'Check - ns5b mean coverage < 20']
 
-    merge5['check'] = np.select(conditions,choices,default="PASS") 
+    merge6['check'] = np.select(conditions,choices,default="PASS") 
 
-    merge5.to_csv('run_summary_report.csv',index=False)
+    merge6.to_csv(args.prefix + '_run_summary_report.csv',index=False)
 
 
 if __name__ == "__main__":
@@ -130,7 +134,8 @@ if __name__ == "__main__":
     parser.add_argument('--qc_report')
     parser.add_argument('--basic_qc')
     parser.add_argument('--abundance_top_n')
+    parser.add_argument('--reads_counts')
     parser.add_argument('--fastqlist')
-#    parser.add_argument('-s', '--sample-id')
+    parser.add_argument('--prefix')
     args = parser.parse_args()
     main(args)

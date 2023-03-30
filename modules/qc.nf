@@ -3,7 +3,6 @@ process fastp {
     tag { sample_id }
 
     publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}*.trim.fastq.gz", mode:'copy'
-    publishDir "${params.outdir}", pattern: "fastqlist", mode:'copy'
 
     input:
     tuple val(sample_id), path(reads_1), path(reads_2)
@@ -25,11 +24,6 @@ process fastp {
 
     """
 }
- //     --detect_adapter_for_pe \
- //     --adapter_fasta ${adapters}
-//removed from script - put back in for provenance
-//printf -- "- process_name: fastp\\n" > ${sample_id}_fastp_provenance.yml
-//printf -- "  tool_name: fastp\\n  tool_version: \$(fastp --version 2>&1 | cut -d ' ' -f 2)\\n" >> ${sample_id}_fastp_provenance.yml
 
 process fastp_json_to_csv {
 

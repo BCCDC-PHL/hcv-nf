@@ -1,8 +1,30 @@
+process mapreadstoref {
+    
+
+    //publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}_mapped_to_ref.bam*", mode:'copy'
+
+    input:
+    tuple val(sample_id), path(reads_1), path(reads_2), path(ref)
+
+    output:
+    tuple val(sample_id), path("${sample_id}_mapped_to_ref.bam"), emit: alignment, optional: true
+
+    """
+    
+    bwa index ${ref}
+    bwa mem ${ref} ${reads_1} ${reads_2} > ${sample_id}_align.sam
+    samtools view -f 1 -F 2828 -q 30 -h ${sample_id}_align.sam | samtools sort -o ${sample_id}_mapped_to_ref.bam
+    samtools index ${sample_id}_mapped_to_ref.bam
+
+    """
+
+}
+
 process mixscan {
   errorStrategy 'ignore'
     tag { sample_id }
 
-    publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}*", mode:'copy'
+    publishDir "${params.outdir}/${sample_id}/demix", pattern: "${sample_id}*", mode:'copy'
 
     input:
     tuple val(sample_id), path(alignment_bam), path(ref)

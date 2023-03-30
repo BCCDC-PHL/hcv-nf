@@ -28,19 +28,6 @@ def main():
     make_out_dir(args['-o'])
     print('\nGENERATING CONSENSUS SEQS...')
 
-    #corrected_reads1,corrected_reads2 = error_corrector(args['-o'], args['-f'], args['-r'])
-    #normalize_reads1,normalize_reads2 = normalize_reads(args['-o'], args['-f'], args['-r'])
-    #contigs = assemble_contigs(args['-o'], args['-f'], args['-r'])
-    #contigs = assemble_contigs(args['-o'], args['-f'], args['-r'])
-    #contigs_cleaned = cut_amplicon_contigs(args['-o'],contigs)
-    #contigs = assemble_contigs(args['-o'], args['-f'], args['-r'])
-    #blast_out = align_contigs_to_ref_seqs(args['-o'], contigs, args['-d'],1)
-    #blast_results = filter_alignments(args['-o'], blast_out, args['-c'], args['-i'])
-    #if args['-m'] == 'assemble':
-    #    ref_seqs = write_best_contigs_fasta(args['-o'], blast_results, contigs)
-        #best_ref = write_best_ref_seqs_fasta(args['-o'], blast_results, args['-d'])
-    #elif args['-m'] == 'align':
-    #    ref_seqs = write_best_ref_seqs_fasta(args['-o'], blast_results, args['-d'])
     bam_out = map_reads(args['-o'], args['-s'], args['-f'], args['-r'])
     vcf_out = call_variants(args['-o'], args['-D'], args['-q'], args['-s'], bam_out)
     consensus_seqs = make_consensus_seqs(args['-o'], bam_out, args['-D'], args['-c'], args['-s'], vcf_out)
@@ -78,7 +65,7 @@ def parse_args(args, version):
     arg_value_types = {'-f': str, '-r': str, '-d': str, '-m': str, '-o': str, '-D': int, '-q': int, '-c': float, '-i': float, '-g': str,'--adapter_sequence':str, '--adapter_sequence_2':str,'-s':str}
     min_arg_values = {'-D': 1, '-q': 0, '-c': 0, '-i': 0}
     max_arg_values = {'-c': 100, '-i': 100}
-    default_arg_values = {'-D': 20, '-q': 30, '-c': 1, '-i': 90, '-g': 'yes','--adapter_sequence':'', '--adapter_sequence_2':''}
+    default_arg_values = {'-D': 20, '-q': 30, '-c': 0, '-i': 90, '-g': 'yes','--adapter_sequence':'', '--adapter_sequence_2':''}
     # Check if all required arguments were provided
     missing_args = set()
     for required_arg in required_args:
@@ -279,36 +266,12 @@ def map_reads(output, ref_seqs, fwd_reads, rev_reads):
     stderr_file = os.path.join(output, 'logs', output + '_bwa_mem_stderr.txt')
     run(terminal_command, error_msg, stdout_file, stderr_file)
     bam_out = os.path.join(output, output + '_alignment_filtered_sorted.bam')
-    terminal_command = f'samtools view -f 3 -F 2828 -q 30 -h {sam_out} | samtools sort -o {bam_out}'
-    #terminal_command = f'samtools view -S -b {sam_out} | samtools sort -o {bam_out}'
+    #terminal_command = f'samtools view -f 3 -F 2828 -q 30 -h {sam_out} | samtools sort -o {bam_out}'
+    terminal_command = f'samtools view -f 1 -F 2828 -q 30 -h {sam_out} | samtools sort -o {bam_out}'
     error_msg = f'samtools view/sort terminated with errors while filtering and sorting mapped reads. Please refer to /{output}/logs/ for output logs.'
     stdout_file = os.path.join(output, 'logs', output + '_samtools_view_sort_stdout.txt')
     stderr_file = os.path.join(output, 'logs', output + '_samtools_view_sort_stderr.txt')
     run(terminal_command, error_msg, stdout_file, stderr_file)
-
-    #for x in range(2):
-    #    #check if bam is empty
-    #    bam_empty_file = os.path.join(output, output + '_bam_empty.txt')
-    #    terminal_command = f'samtools view {bam_out} | wc -l > {bam_empty_file}'
-    #    error_msg = f'samtools view/sort terminated with errors while cat bam file. Please refer to /{output}/logs/ for output logs.'
-    #    stdout_file = os.path.join(output, 'logs', output + '_samtools_view_stdout.txt')
-    #    stderr_file = os.path.join(output, 'logs', output + '_samtools_view_stderr.txt')
-    #    run(terminal_command, error_msg, stdout_file, stderr_file)
-    #    with open(bam_empty_file) as f:
-    #        bam_empty = f.readlines()
-    #    bam_empty = int(bam_empty[0].strip())
-
-    #    if bam_empty == 0: #if it is empty then remove the filter on proper pair
-    #        bam_out = os.path.join(output, output + '_alignment_filtered_sorted.bam')
-    #        terminal_command = f'samtools view -f 1 -F 2828 -q 30 -h {sam_out} | samtools sort -o {bam_out}'
-    #        if x==1: #allow reads align to multiple segments due to high similarity, so ignore mapping quality 
-    #            terminal_command = f'samtools view -f 1 -F 2828 -h {sam_out} | samtools sort -o {bam_out}'
-    #        
-    #        #terminal_command = f'samtools view -S -b {sam_out} | samtools sort -o {bam_out}'
-    #        error_msg = f'samtools view/sort terminated with errors while filtering and sorting mapped reads. Please refer to /{output}/logs/ for output logs.'
-    #        stdout_file = os.path.join(output, 'logs', output + '_samtools_view_sort_stdout.txt')
-    #        stderr_file = os.path.join(output, 'logs', output + '_samtools_view_sort_stderr.txt')
-    #        run(terminal_command, error_msg, stdout_file, stderr_file)
 
     terminal_command = f'samtools index {bam_out}'
     error_msg = f'samtools index terminated with errors while indexing mapped reads. Please refer to /{output}/logs/ for output logs.'
@@ -362,14 +325,7 @@ def make_consensus_seqs(output, bam_out, min_depth, min_cov, ref_seqs, vcf_out):
                 seqs[header] = ''
             else:
                 seqs[header] += line.strip()
-    #terminal_command = f"cat {ref_seqs} | grep '>' | cut -d'_' -f1 | uniq | sed 's/>//g' > segment_order"
-    #sp.run(terminal_command,shell=True)
-    #sp.run(f"(echo order ; cat segment_order) > segment_order.csv", shell=True)
-    #segment_order = pd.read_csv("segment_order.csv")
-    #segment_order = segment_order['order'].tolist()
-    #segment_order = ['1a', '1b', '1c', '1d', '1e', '1g', '1h', '1j','1k','1m','1n','1o','1','2a','2b','2c','2e','2f','2i','2j','2k','2m','2q','2r','2t','2u','2','3a','3b','3d','3e','3g','3h','3i','3k','3','4a','4b','4c','4d','4f','4g','4k','4l','4m','4n','4o','4p','4q','4r','4s','4t','4v','']
-    #header_order = sorted(seqs.keys(), key=lambda s: segment_order.index(s.split('|')[2]))
-    #seqs = {header: seqs[header] for header in header_order}
+
     # Remove seqs that where the number of sequenced bases does not exceed the min coverage of the median ref seq length
     ref_seq_length = lambda header: int(header.split('|')[-1])
     sequenced_bases = lambda seq: len([base for base in seq if base in 'ATGC'])
@@ -441,16 +397,9 @@ def genotype_call(output, consensus_blast_out, min_cov, min_id):
     print('Filtering alignments...')
     cols = 'qseqid sseqid pident qlen slen mismatch gapopen qstart qend sstart send bitscore'.split(' ')
     blast_results = pd.read_csv(consensus_blast_out, sep='\t', names=cols)
-    #blast_results['segment'] = blast_results.apply(lambda row: row['sseqid'].split('_')[1], axis=1)
-    #blast_results['subtype'] = blast_results.apply(lambda row: row['sseqid'].split('_')[0], axis=1)
     blast_results = blast_results[blast_results['pident'] >= 90]
     #blast_results['end'] = blast_results.apply(lambda row: row['sseqid'].split('|')[1], axis=1)
     # Discard alignments below minimum identity threshold
-
-    #blast_results['coverage'] = blast_results['qlen'] * 100 / blast_results['slen']
-    #blast_results = blast_results.sort_values(by=['bitscore'],ascending=False)
-    #blast_results['amplicon'] = blast_results.apply(lambda row: row['qseqid'].split('|')[1], axis=1)
-    #blast_results = blast_results[blast_results['pident']>=min_id]
 
     best_bitscores = blast_results[['qseqid','bitscore']].groupby(['qseqid']).head(10)
     blast_results = pd.merge(blast_results, best_bitscores, on=['qseqid', 'bitscore'])
@@ -498,18 +447,18 @@ def clean_headers(consensus_seqs):
 
 
 def garbage_collection(output):
-    #spades_out = os.path.join(output, output + '_spades_results')
-    #sh.rmtree(spades_out)
-    #blast_out = os.path.join(output, output + '_contigs_blast_results.tsv')
-    #os.remove(blast_out)
-    #contigs = os.path.join(output, output + '_contigs.fa')
-    #os.remove(contigs)
+    spades_out = os.path.join(output, output + '_spades_results')
+    sh.rmtree(spades_out)
+    blast_out = os.path.join(output, output + '_contigs_blast_results.tsv')
+    os.remove(blast_out)
+    contigs = os.path.join(output, output + '_contigs.fa')
+    os.remove(contigs)
     sam_out = os.path.join(output, output + '_alignment.sam')
     os.remove(sam_out)
-    #ref_seqs = os.path.join(output, output + '_ref_seqs_for_mapping.fa')
+    ref_seqs = os.path.join(output, output + '_ref_seqs_for_mapping.fa')
     vcf_out = os.path.join(output, output + '_variants.vcf.gz')
     low_cov = os.path.join(output, output + '_low_cov.bed')
-    #files = [ref_seqs + suffix for suffix in ['.amb', '.ann', '.bwt', '.fai', '.pac', '.sa']]
+    files = [ref_seqs + suffix for suffix in ['.amb', '.ann', '.bwt', '.fai', '.pac', '.sa']]
     files = [vcf_out + suffix for suffix in ['', '.csi']]
     files += [low_cov]
     for file in files:
