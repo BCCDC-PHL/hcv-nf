@@ -17,7 +17,7 @@ process maprawreads {
     
     bwa index ${ref}
     bwa mem ${ref} ${reads_1} ${reads_2} > ${sample_id}_align.sam
-    samtools view -f 1 -F 2828 -q 30 -h ${sample_id}_align.sam | samtools sort -o ${sample_id}_mapped_to_db.bam
+    samtools view -F 2828 -q 30 -h ${sample_id}_align.sam | samtools sort -o ${sample_id}_mapped_to_db.bam
     samtools index ${sample_id}_mapped_to_db.bam
 
     samtools depth ${sample_id}_mapped_to_db.bam > ${sample_id}_mapped_to_db.depth
@@ -34,13 +34,14 @@ process maprawreads {
 process plotdepthdb {
     errorStrategy 'ignore'
     
-    publishDir "${params.outdir}/${sample_id}/debug", pattern: "${sample_id}_db_depth_plots.png", mode:'copy'
+    publishDir "${params.outdir}/${sample_id}/debug", pattern: "${sample_id}*_db_depth_plots.png", mode:'copy'
 
     input:
     tuple val(sample_id), path(mapped_db_depth)
 
     output:
-    tuple val(sample_id), path("${sample_id}_db_depth_plots.png"), emit: dbdepthplot, optional: true
+    tuple val(sample_id), path("${sample_id}_*_db_depth_plots.png"), emit: dbdepthplot, optional: true
+
 
     """
     

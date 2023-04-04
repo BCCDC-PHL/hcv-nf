@@ -23,9 +23,33 @@ coverage <- read_tsv(file = args[1],
          position = X2,
          depth = X3) 
 
-coverage = coverage %>% group_by(position) %>% summarise(total_depth = sum(depth))
-p = ggplot(coverage, aes(x=position, y=total_depth)) +
-  geom_point(colour="dark blue", size=1, shape=20, alpha=1/3) +
-  scale_y_continuous(trans = scales::log10_trans(), breaks = scales::trans_breaks("log10", function(x) 10^x))
+coverage$amplicon = ifelse(coverage$position < 850, "core", ifelse(coverage$position > 8500,"ns5b","other"))
 
-ggsave(plot = p, filename = paste0(accession, "_db_depth_plots.png"), device = "png", width = 8, units = "in")
+
+core = coverage[coverage$amplicon == "core",]
+
+top3_core <- core %>% group_by(segment) %>% summarise(total_depth = sum(depth)) %>% top_n(n=3)
+core = core[core$segment %in% top3_core$segment,]
+
+
+ns5b = coverage[coverage$amplicon == "ns5b",] 
+top3_ns5b <- ns5b %>% group_by(segment) %>% summarise(total_depth = sum(depth)) %>% top_n(n=3)
+ns5b = ns5b[ns5b$segment %in% top3_ns5b$segment,]
+
+
+p1 <- ggplot(core, aes(x=position, y=depth)) +
+  geom_line() + 
+  scale_y_log10(labels=comma)+ xlim(361,764) +
+  facet_wrap(~ segment, ncol = 1) + ggtitle(paste0(filename," - core - top 3 references mapped"))
+
+p1 <- p1 +  scale_x_continuous(breaks=c(361,400,450,500,550, 600,650,700,764))
+
+p2 <- ggplot(ns5b, aes(x=position, y=depth)) +
+  geom_line() + 
+  scale_y_log10(labels=comma)+ xlim(8803, 9191) +
+  facet_wrap(~ segment, ncol = 1) + ggtitle(paste0(filename," - ns5b - top 3 references mapped"))
+
+p2 <- p2 + scale_x_continuous(breaks=c(8803,8850, 8900,8950, 9000,9050,9100, 9150, 9191))
+
+ggsave(plot = p1, filename = paste0(accession, "_core_db_depth_plots.png"), device = "png", width = 8, units = "in")
+ggsave(plot = p2, filename = paste0(accession, "_ns5b_db_depth_plots.png"), device = "png", width = 8, units = "in")

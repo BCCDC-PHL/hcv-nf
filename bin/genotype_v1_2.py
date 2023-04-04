@@ -447,18 +447,18 @@ def clean_headers(consensus_seqs):
 
 
 def garbage_collection(output):
-    spades_out = os.path.join(output, output + '_spades_results')
-    sh.rmtree(spades_out)
-    blast_out = os.path.join(output, output + '_contigs_blast_results.tsv')
-    os.remove(blast_out)
-    contigs = os.path.join(output, output + '_contigs.fa')
-    os.remove(contigs)
+    #spades_out = os.path.join(output, output + '_spades_results')
+    #sh.rmtree(spades_out)
+    #blast_out = os.path.join(output, output + '_contigs_blast_results.tsv')
+    #os.remove(blast_out)
+    #contigs = os.path.join(output, output + '_contigs.fa')
+    #os.remove(contigs)
     sam_out = os.path.join(output, output + '_alignment.sam')
     os.remove(sam_out)
-    ref_seqs = os.path.join(output, output + '_ref_seqs_for_mapping.fa')
+    #ref_seqs = os.path.join(output, output + '_ref_seqs_for_mapping.fa')
     vcf_out = os.path.join(output, output + '_variants.vcf.gz')
     low_cov = os.path.join(output, output + '_low_cov.bed')
-    files = [ref_seqs + suffix for suffix in ['.amb', '.ann', '.bwt', '.fai', '.pac', '.sa']]
+    #files = [ref_seqs + suffix for suffix in ['.amb', '.ann', '.bwt', '.fai', '.pac', '.sa']]
     files = [vcf_out + suffix for suffix in ['', '.csi']]
     files += [low_cov]
     for file in files:

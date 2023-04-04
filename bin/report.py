@@ -108,8 +108,8 @@ def main(args):
     conditions = [
         #~(merge5['most_abundant_species_name'] == "Hepacivirus C"),#check if hcv is not the most abundant, even for negative controls
         (merge6['hcv_bases'] < 22000),
-        (merge6['core_mapped_reads'] < 10),
-        (merge6['ns5b_mapped_reads'] < 10),
+        (merge6['core_subtype'].isna() & merge6['core_mapped_reads'] < 2000),
+        (merge6['ns5b_subtype'].isna() & merge6['ns5b_mapped_reads'] < 5000),
         (merge6['core_subtype'].isna() | merge6['ns5b_subtype'].isna()),
         ~(merge6['core_subtype'] == merge6['ns5b_subtype']) & (merge6['core_subtype'].notna() & merge6['ns5b_subtype'].notna()),
         (merge6['ns5b_sequenced_bases'].notna()) & (merge6['ns5b_sequenced_bases'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 300),
@@ -119,7 +119,7 @@ def main(args):
         
     ]
 
-    choices = ['Check - low HCV content','Check - core low mapped reads','Check - core low mapped reads', 'Check - missing core/ns5b subtype', 'Check - mismatch core/ns5b subtypes','Check - ns5b sequenced bases','Check - core sequenced bases', 'Check - core mean coverage < 20', 'Check - ns5b mean coverage < 20']
+    choices = ['Check - low HCV content','Check - core low mapped reads','Check - ns5b low mapped reads', 'Check - missing core/ns5b subtype', 'Check - mismatch core/ns5b subtypes','Check - ns5b sequenced bases','Check - core sequenced bases', 'Check - core mean coverage < 20', 'Check - ns5b mean coverage < 20']
 
     merge6['check'] = np.select(conditions,choices,default="PASS") 
 

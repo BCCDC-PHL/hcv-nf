@@ -16,7 +16,7 @@ process genotype {
     tuple val(sample_id), path("${sample_id}/${sample_id}_blast_results_prefilter.csv"), emit: allblastresult, optional: true
     tuple val(sample_id), path("${sample_id}/${sample_id}_filtered_blast_results.csv"), emit: blastreport, optional: true
     tuple val(sample_id), path("${sample_id}/${sample_id}_contigs.fa"), emit: contigs, optional: true
-    //tuple val(sample_id), path("${sample_id}/${sample_id}_filtered_contigs.fa"), emit: filtered_contigs, optional: true
+    tuple val(sample_id), path("${sample_id}/${sample_id}_filtered_contigs.fa"), emit: filtered_contigs, optional: true
     
     tuple val(sample_id), path("${sample_id}/logs"), emit: fluviewer_logs
 
