@@ -80,7 +80,7 @@ workflow{
     ch_count_mapped_reads = ch_maprawreads.mappedreads
         .collectFile(it -> it[1], name: "combined_amplicon_mapped_reads_counts.csv", storeDir:params.outdir, keepHeader: true, skip: 1)
 
-    report(ch_fastqlist.combine(ch_combined_genotype).combine(ch_combined_consensus).combine(ch_combined_demix).combine(ch_combined_qc).combine(ch_basic_qc).combine(ch_abundance_top_n))
+    report(ch_fastqlist.combine(ch_combined_genotype).combine(ch_combined_consensus).combine(ch_combined_demix).combine(ch_combined_qc).combine(ch_basic_qc).combine(ch_abundance_top_n).combine(ch_count_mapped_reads))
 
     
 }
