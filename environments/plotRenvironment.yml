@@ -1,4 +1,4 @@
-name: hcv-nf
+name: hcv-r
 channels:
 - conda-forge
 - bioconda

@@ -42,7 +42,7 @@ process makeconsensus {
     output:
     tuple val(sample_id), path("${sample_id}/${sample_id}*.bam*"), emit: alignment, optional: true
     //tuple val(sample_id), path("${sample_id}/${sample_id}*_report.tsv"), emit: reports, optional: true
-    tuple val(sample_id), path("${sample_id}/${sample_id}_genotype_calls.csv"), emit: genotyperesult, optional: true
+    //tuple val(sample_id), path("${sample_id}/${sample_id}_genotype_calls.csv"), emit: genotyperesult, optional: true
     //tuple val(sample_id), path("${sample_id}/${sample_id}_contigs.fa"), emit: contigs, optional: true
     //tuple val(sample_id), path("${sample_id}/${sample_id}_filtered_contigs.fa"), emit: filtered_contigs, optional: true
     
@@ -60,4 +60,45 @@ process makeconsensus {
 }
 
 
+process blastconcensus {
+    //errorStrategy 'ignore'
+    tag {sample_id}
 
+    publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}/${sample_id}*", mode:'copy'
+    
+    input:
+    tuple val(sample_id), path(query), path(db_dir), path(db_name)
+
+    output:
+    tuple val(sample_id), path("${sample_id}_consensus_blast.csv"), emit: consensus_blast, optional:true
+    tuple val(sample_id), path("${sample_id}_genotype_calls_nt.csv"), emit: genotyperesult, optional:true
+    tuple val(sample_id), path("${sample_id}_seq_description.csv"), emit: seq_description, optional:true
+
+
+    """
+
+    export BLASTDB="${db_dir}"
+
+    echo "query_seq_id,subject_accession,subject_strand,query_length,query_start,query_end,subject_length,subject_start,subject_end,alignment_length,percent_identity,percent_coverage,num_mismatch,num_gaps,e_value,bitscore,subject_taxids" > ${sample_id}_consensus_blast.csv
+
+    blastn \
+      -db ${db_name} \
+      -num_threads ${task.cpus} \
+      -perc_identity ${params.minid} \
+      -qcov_hsp_perc ${params.mincov} \
+      -query ${query} \
+      -outfmt "6 qseqid saccver sstrand qlen qstart qend slen sstart send length pident qcovhsp mismatch gaps evalue bitscore staxids" \
+    | tr \$"\\t" "," >> ${sample_id}_consensus_blast.csv
+
+    tail -qn+2 ${sample_id}_consensus_blast.csv | cut -d',' -f2 | sort -u > seqids
+    blastdbcmd -db ${db_name} -entry_batch seqids | grep '>' > ${sample_id}_seq_description
+
+    tail -qn+2 ${sample_id}_consensus_blast.csv | cut -d',' -f17 | sed 's/;/\\n/g' | sort -u > taxids
+
+    taxonkit lineage -r -n  taxids > ${sample_id}_taxon_results.txt
+
+    bind_taxon.py -f ${sample_id}_taxon_results.txt -d ${sample_id}_seq_description -b ${sample_id}_consensus_blast.csv -o ${sample_id}_genotype_calls_nt.csv
+
+    """
+
+}

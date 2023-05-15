@@ -12,6 +12,7 @@ include { normalize } from './modules/qc.nf'
 include { bbdukadapter } from './modules/qc.nf'
 include { genotype } from './modules/hcv.nf'
 include { makeconsensus } from './modules/hcv.nf'
+include { blastconcensus } from './modules/hcv.nf'
 include { maprawreads } from './modules/debug.nf'
 include { plotdepthdb } from './modules/debug.nf'
 include {mapreadstoref} from './modules/mix.nf'
@@ -41,8 +42,10 @@ workflow{
     ch_db = Channel.fromPath(params.db)
     ch_ref = Channel.fromPath(params.refhcv)
     ch_fastq_input = Channel.fromFilePairs(params.fastq_input + '/*_{R1,R2}*.fastq.gz', flat: true ).map{ it -> [it[0].split('_')[0], it[1], it[2]] }.unique{ it -> it[0] }
-    ch_basic_qc = Channel.fromPath(params.basic_qc)
-    ch_abundance_top_n = Channel.fromPath(params.abundance_top_n)
+    //ch_basic_qc = Channel.fromPath(params.basic_qc)
+    //ch_abundance_top_n = Channel.fromPath(params.abundance_top_n)
+    ch_nt = Channel.fromPath(params.nt_dir)
+    ch_db_name = Channel.fromPath(params.db_name)
 
     main:
 
@@ -58,12 +61,13 @@ workflow{
     genotype(cutadapter.out.out_reads)
     findamplicon(genotype.out.filtered_contigs)
     ch_consensus = makeconsensus(cutadapter.out.out_reads.combine(findamplicon.out.ref_seqs_mapping, by : 0))
+    ch_nt_calls = blastconcensus(ch_consensus.consensus_seqs.combine(ch_nt).combine(ch_db_name))
     mafftraxmltree(makeconsensus.out.consensus_seqs)
     QualiMap(makeconsensus.out.alignment)
     ch_qc = parseQMresults(QualiMap.out.genome_results)
     segcov(makeconsensus.out.alignment)
 
-    ch_combined_genotype = ch_consensus.genotyperesult
+    ch_combined_genotype = ch_nt_calls.genotyperesult
         .collectFile(it -> it[1], name: "combined_genotype_calls.csv", storeDir: params.outdir, keepHeader: true, skip: 1)
 
     ch_combined_consensus = ch_consensus.consensus_seqs_report
@@ -80,7 +84,7 @@ workflow{
     ch_count_mapped_reads = ch_maprawreads.mappedreads
         .collectFile(it -> it[1], name: "combined_amplicon_mapped_reads_counts.csv", storeDir:params.outdir, keepHeader: true, skip: 1)
 
-    report(ch_fastqlist.combine(ch_combined_genotype).combine(ch_combined_consensus).combine(ch_combined_demix).combine(ch_combined_qc).combine(ch_basic_qc).combine(ch_abundance_top_n).combine(ch_count_mapped_reads))
+    report(ch_fastqlist.combine(ch_combined_consensus).combine(ch_combined_demix).combine(ch_combined_qc).combine(ch_count_mapped_reads))
 
     
 }

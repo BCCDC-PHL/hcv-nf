@@ -65,8 +65,8 @@ process cutadapter {
     """
     cutadapt \
       -j ${task.cpus} \
-      -g file:${adapters} \
-      -G file:${adapters} \
+      -b file:${adapters} \
+      -B file:${adapters} \
       -o ${sample_id}_R1.out.fastq.gz \
       -p ${sample_id}_R2.out.fastq.gz \
       ${reads_1}\

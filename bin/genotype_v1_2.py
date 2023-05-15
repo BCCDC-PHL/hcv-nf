@@ -35,8 +35,8 @@ def main():
     #do genotype calls
     consensus_seqs_no_primers = cut_primers(args['-o'],consensus_seqs)
 
-    blast_out_consensus = align_contigs_to_ref_seqs(args['-o'],consensus_seqs_no_primers,args['-d'],2)
-    genotypes = genotype_call(args['-o'],blast_out_consensus,args['-c'], args['-i'])
+    #blast_out_consensus = align_contigs_to_ref_seqs(args['-o'],consensus_seqs_no_primers,args['-d'],2)
+    #genotypes = genotype_call(args['-o'],blast_out_consensus,args['-c'], args['-i'])
 
     print('\nWRITING REPORT...')
     sequenced_bases = count_sequenced_bases_in_consensus_seqs(consensus_seqs)

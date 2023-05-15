@@ -1,4 +1,4 @@
-name: hcv-nf-new
+name: hcv-nf
 channels:
   - conda-forge
   - bioconda
@@ -23,3 +23,4 @@ dependencies:
   - raxml=8.2.12
   - cutadapt=4.1
   - bbmap=38.98
+  - taxonkit=0.14.2
