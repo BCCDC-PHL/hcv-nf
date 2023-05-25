@@ -65,7 +65,7 @@ def parse_args(args, version):
     arg_value_types = {'-f': str, '-r': str, '-d': str, '-m': str, '-o': str, '-D': int, '-q': int, '-c': float, '-i': float, '-g': str,'--adapter_sequence':str, '--adapter_sequence_2':str,'-s':str}
     min_arg_values = {'-D': 1, '-q': 0, '-c': 0, '-i': 0}
     max_arg_values = {'-c': 100, '-i': 100}
-    default_arg_values = {'-D': 20, '-q': 30, '-c': 0, '-i': 90, '-g': 'yes','--adapter_sequence':'', '--adapter_sequence_2':''}
+    default_arg_values = {'-D': 20, '-q': 30, '-c': 1.5, '-i': 90, '-g': 'yes','--adapter_sequence':'', '--adapter_sequence_2':''}
     # Check if all required arguments were provided
     missing_args = set()
     for required_arg in required_args:

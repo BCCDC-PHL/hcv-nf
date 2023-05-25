@@ -64,7 +64,7 @@ process blastconcensus {
     //errorStrategy 'ignore'
     tag {sample_id}
 
-    publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}/${sample_id}*", mode:'copy'
+    publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}*", mode:'copy'
     
     input:
     tuple val(sample_id), path(query), path(db_dir), path(db_name)

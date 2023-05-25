@@ -7,18 +7,10 @@ import argparse
 
 
 def main(args):
-    #consensus_report = pd.read_csv('combined_consensus_seqs_report.tsv', sep='\t')
-    #genotype_calls = pd.read_csv('combined_genotype_calls.csv')
-    #demix_report = pd.read_csv('combined_demix_report.csv')
-    #qc_report = pd.read_csv('combined_qc_stats.csv')
-    #basic_qc = pd.read_csv('../basic_qc/basic_qc_stats.csv')
-    #abundance = pd.read_csv('../abundance_top_n/top_5_abundances_species.csv')
+
     consensus_report = pd.read_csv(args.consensus_report, sep='\t')
-    #genotype_calls = pd.read_csv(args.genotype_calls)
     demix_report = pd.read_csv(args.demix_report)
     qc_report = pd.read_csv(args.qc_report)
-    #basic_qc = pd.read_csv(args.basic_qc)
-    #abundance = pd.read_csv(args.abundance_top_n)
     mapped_reads_counts = pd.read_csv(args.reads_counts)
 
     with open(args.fastqlist) as f:
@@ -29,7 +21,6 @@ def main(args):
     fqlist_df = pd.DataFrame(fqlist, columns = ['sample_id'])
 
     #process consensus result
-    #print(consensus_report)
     consensus_report['sample_id'] = consensus_report['consensus_seq'].apply(lambda x: re.sub("^_R_","", x))
     consensus_report['sample_id'] = consensus_report['sample_id'].apply(lambda x: x.split('_')[0])
 
@@ -40,8 +31,8 @@ def main(args):
     consensus_report_spread = consensus_report_concat.pivot(index=['sample_id'],columns='amplicon',values=['subtype','sequenced_bases']).reset_index()
     consensus_report_spread.columns = consensus_report_spread.columns.map(lambda index: f'{index[1]}_{index[0]}')
     consensus_report_spread = consensus_report_spread.rename(columns={'_sample_id': 'sample_id'})
-    #process qc results
 
+    #process qc results
 
     qc_report = pd.merge(consensus_report['consensus_seq'],qc_report, left_on="consensus_seq", right_on="contig",how='left')
     qc_report_reduced = qc_report[["sample_id","amplicon","total_mapped_bases","mean_coverage","std_coverage","proportion_genome_covered_over_20x"]]
@@ -89,36 +80,24 @@ def main(args):
     #merge01 = pd.merge(merge0,abundance,on = 'sample_id', how='left')
     merge1 = pd.merge(fqlist_df,consensus_report_spread, on = 'sample_id', how='left')
     merge2 = pd.merge(merge1, qc_report_spread, on='sample_id',how='left')
-    #merge3 = pd.merge(merge2, best_gt_spread, on='sample_id',how='left')
-    #merge4 = pd.merge(merge3, second_gt_spread, on='sample_id',how='left')
+  
     merge5 = pd.merge(merge2, demix_report, on='sample_id',how='left')
     merge6 = pd.merge(merge5, mapped_reads_counts, on='sample_id',how='left')
 
-    #conditions = [
-    #  (merge6['abundance_1_name'] == "Hepacivirus C"),
-    #  (merge6['abundance_2_name'] == "Hepacivirus C"),
-    #  (merge6['abundance_3_name'] == "Hepacivirus C"),
-    #  (merge6['abundance_4_name'] == "Hepacivirus C"),
-    #  (merge6['abundance_5_name'] == "Hepacivirus C")
-    #]
-    #choices = [merge6['abundance_1_fraction_total_reads']* merge6['total_bases'],merge6['abundance_2_fraction_total_reads']*merge6['total_bases'],merge6['abundance_3_fraction_total_reads']* merge6['total_bases'],merge6['abundance_4_fraction_total_reads']* merge6['total_bases'],merge6['abundance_5_fraction_total_reads']* merge6['total_bases']]
-    #merge6['hcv_bases'] =  np.select(conditions,choices,default=0) 
-    #FLAGGING samples
     conditions = [
-        #~(merge5['most_abundant_species_name'] == "Hepacivirus C"),#check if hcv is not the most abundant, even for negative controls
-        #(merge6['hcv_bases'] < 22000),
-        (merge6['core_subtype'].isna() & merge6['core_mapped_reads'] < 4000),
-        (merge6['ns5b_subtype'].isna() & merge6['ns5b_mapped_reads'] < 7000),
+
+        ((merge6['core_subtype'].isna()) & (merge6['core_mapped_reads'] < 50)),
+        ((merge6['ns5b_subtype'].isna()) & (merge6['ns5b_mapped_reads'] < 50)),
         (merge6['core_subtype'].isna() | merge6['ns5b_subtype'].isna()),
-        ~(merge6['core_subtype'] == merge6['ns5b_subtype']) & (merge6['core_subtype'].notna() & merge6['ns5b_subtype'].notna()),
         (merge6['ns5b_sequenced_bases'].notna()) & (merge6['ns5b_sequenced_bases'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 300),
         (merge6['core_sequenced_bases'].notna()) & (merge6['core_sequenced_bases'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 300),
         (merge6['core_mean_coverage'].notna()) & (merge6['core_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 20),
-        (merge6['ns5b_mean_coverage'].notna()) & (merge6['ns5b_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 20)
+        (merge6['ns5b_mean_coverage'].notna()) & (merge6['ns5b_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 35),
+        ~(merge6['core_subtype'] == merge6['ns5b_subtype']) & (merge6['core_subtype'].notna() & merge6['ns5b_subtype'].notna())
         
     ]
 
-    choices = ['Check - core low mapped reads','Check - ns5b low mapped reads', 'Check - missing core/ns5b subtype', 'Check - mismatch core/ns5b subtypes','Check - ns5b sequenced bases','Check - core sequenced bases', 'Check - core mean coverage < 20', 'Check - ns5b mean coverage < 20']
+    choices = ['Check - core low mapped reads','Check - ns5b low mapped reads', 'Check - missing core/ns5b subtype', 'Check - mismatch core/ns5b subtypes','Check - ns5b sequenced bases','Check - core sequenced bases', 'Check - core mean coverage < 20', 'Check - ns5b mean coverage < 35']
 
     merge6['check'] = np.select(conditions,choices,default="PASS") 
 
@@ -128,11 +107,8 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--consensus_report')
-    #parser.add_argument('--genotype_calls')
     parser.add_argument('--demix_report')
     parser.add_argument('--qc_report')
-    parser.add_argument('--basic_qc')
-    parser.add_argument('--abundance_top_n')
     parser.add_argument('--reads_counts')
     parser.add_argument('--fastqlist')
     parser.add_argument('--prefix')
