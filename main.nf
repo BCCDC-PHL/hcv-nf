@@ -90,7 +90,7 @@ workflow{
     
     ch_provenance = ch_provenance.join(fastp.out.provenance).map{ it -> [it[0], it[1] << it[2]] }
     ch_provenance = ch_provenance.join(cutadapt.out.provenance).map{ it -> [it[0], it[1] << it[2]] }
-    ch_provenance = ch_provenance.join(ch_nt_calls.out.provenance).map{ it -> [it[0], it[1] << it[2]] }
+    //ch_provenance = ch_provenance.join(ch_nt_calls.out.provenance).map{ it -> [it[0], it[1] << it[2]] }
     //ch_provenance = ch_provenance.join(ch_fastq_input.map{ it -> it[0] }.combine(ch_pipeline_provenance)).map{ it -> [it[0], it[1] << it[2]] }
     collect_provenance(ch_provenance)
 }
