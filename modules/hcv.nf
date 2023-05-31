@@ -61,7 +61,7 @@ process makeconsensus {
 
 
 process blastconcensus {
-    //errorStrategy 'ignore'
+    errorStrategy 'ignore'
     tag {sample_id}
 
     publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}*", mode:'copy'
@@ -73,9 +73,12 @@ process blastconcensus {
     tuple val(sample_id), path("${sample_id}_consensus_blast.csv"), emit: consensus_blast, optional:true
     tuple val(sample_id), path("${sample_id}_genotype_calls_nt.csv"), emit: genotyperesult, optional:true
     tuple val(sample_id), path("${sample_id}_seq_description.csv"), emit: seq_description, optional:true
+    tuple val(sample_id), path("${sample_id}_blastn_provenance.yml"), emit: provenance
 
 
     """
+    printf -- "- process_name: blastn\\n" > ${sample_id}_blastn_provenance.yml
+    printf -- "  tool_name: blastn\\n  tool_version: \$(blastn -version 2>&1 | cut -d' ' -f2 | head -n 1)\\n" >> ${sample_id}_blastn_provenance.yml
 
     export BLASTDB="${db_dir}"
 
