@@ -4,12 +4,11 @@ import java.time.LocalDateTime
 
 nextflow.enable.dsl = 2
 
+include { pipeline_provenance } from './modules/provenance.nf'
+include { collect_provenance } from './modules/provenance.nf'
 include { fastp } from './modules/qc.nf'
 include { fastp_json_to_csv } from './modules/qc.nf'
-include { errorcorrect } from './modules/qc.nf'
 include { cutadapter } from './modules/qc.nf'
-include { normalize } from './modules/qc.nf'
-include { bbdukadapter } from './modules/qc.nf'
 include { genotype } from './modules/hcv.nf'
 include { makeconsensus } from './modules/hcv.nf'
 include { blastconcensus } from './modules/hcv.nf'
@@ -38,14 +37,22 @@ include { report } from './modules/report.nf'
                  .stripIndent()
 
 workflow{
+    ch_start_time = Channel.of(LocalDateTime.now())
+    ch_pipeline_name = Channel.of(workflow.manifest.name)
+    ch_pipeline_version = Channel.of(workflow.manifest.version)
+
+    ch_pipeline_provenance = pipeline_provenance(ch_pipeline_name.combine(ch_pipeline_version).combine(ch_start_time))
+
     ch_adapters = Channel.fromPath(params.adapters)
     ch_db = Channel.fromPath(params.db)
     ch_ref = Channel.fromPath(params.refhcv)
+    //ch_fastq_input = Channel.fromFilePairs( params.fastq_search_path, flat: true ).map{ it -> [it[0].split('_')[0], it[1], it[2]] }.unique{ it -> it[0] }
     ch_fastq_input = Channel.fromFilePairs(params.fastq_input + '/*_{R1,R2}*.fastq.gz', flat: true ).map{ it -> [it[0].split('_')[0], it[1], it[2]] }.unique{ it -> it[0] }
     //ch_basic_qc = Channel.fromPath(params.basic_qc)
     //ch_abundance_top_n = Channel.fromPath(params.abundance_top_n)
     ch_nt = Channel.fromPath(params.nt_dir)
     ch_db_name = Channel.fromPath(params.db_name)
+
 
     main:
 
@@ -87,10 +94,11 @@ workflow{
     report(ch_fastqlist.combine(ch_combined_consensus).combine(ch_combined_demix).combine(ch_combined_qc).combine(ch_count_mapped_reads))
 
     
-    
-    //ch_provenance = ch_provenance.join(fastp.out.provenance).map{ it -> [it[0], it[1] << it[2]] }
-    //ch_provenance = ch_provenance.join(cutadapt.out.provenance).map{ it -> [it[0], it[1] << it[2]] }
-    //ch_provenance = ch_provenance.join(ch_nt_calls.out.provenance).map{ it -> [it[0], it[1] << it[2]] }
-    //ch_provenance = ch_provenance.join(ch_fastq_input.map{ it -> it[0] }.combine(ch_pipeline_provenance)).map{ it -> [it[0], it[1] << it[2]] }
-    //collect_provenance(ch_provenance)
+    ch_provenance = genotype.out.provenance
+    ch_provenance = ch_provenance.join(fastp.out.provenance).map{ it -> [it[0], [it[1] , it[2]]] }
+    ch_provenance = ch_provenance.join(cutadapter.out.provenance).map{ it -> [it[0], it[1] << it[2]] }
+    ch_provenance = ch_provenance.join(ch_nt_calls.provenance).map{ it -> [it[0], it[1] << it[2]] }
+    ch_provenance = ch_provenance.join(ch_mix.provenance).map{ it -> [it[0], it[1] << it[2]] }
+    ch_provenance = ch_provenance.join(ch_fastq_input.map{ it -> it[0] }.combine(ch_pipeline_provenance)).map{ it -> [it[0], it[1] << it[2]] }
+    collect_provenance(ch_provenance)
 }

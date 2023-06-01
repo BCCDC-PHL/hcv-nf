@@ -17,10 +17,18 @@ process genotype {
     tuple val(sample_id), path("${sample_id}/${sample_id}_filtered_blast_results.csv"), emit: blastreport, optional: true
     tuple val(sample_id), path("${sample_id}/${sample_id}_contigs.fa"), emit: contigs, optional: true
     tuple val(sample_id), path("${sample_id}/${sample_id}_filtered_contigs.fa"), emit: filtered_contigs, optional: true
-    
+    tuple val(sample_id), path("${sample_id}_genotype_provenance.yml"), emit: provenance
     tuple val(sample_id), path("${sample_id}/logs"), emit: fluviewer_logs
 
     """
+    printf -- "- process_name: genotype\\n" > ${sample_id}_genotype_provenance.yml
+    printf -- "  tool_name: Spades\\n  tool_version: \$(spades.py --version | cut -d' ' -f4)\\n" >> ${sample_id}_genotype_provenance.yml
+    printf -- "  tool_name: blastn\\n  tool_version: \$(blastn -version | cut -d' ' -f2 | head -n 1)\\n" >> ${sample_id}_genotype_provenance.yml
+    printf -- "  database used: ${params.db}\\n" >> ${sample_id}_genotype_provenance.yml
+    printf -- "  database_path: \$(readlink -f ${params.db})\\n" >> ${sample_id}_genotype_provenance.yml
+    printf -- "  database sha256: \$(shasum -a 256 ${params.db} | awk '{print \$1}')\\n" >> ${sample_id}_genotype_provenance.yml
+
+
     genotype_v1.py -f ${reads_1} -r ${reads_2} -o ${sample_id} -d ${params.db} -m ${params.mode}
 
     """
@@ -41,13 +49,6 @@ process makeconsensus {
 
     output:
     tuple val(sample_id), path("${sample_id}/${sample_id}*.bam*"), emit: alignment, optional: true
-    //tuple val(sample_id), path("${sample_id}/${sample_id}*_report.tsv"), emit: reports, optional: true
-    //tuple val(sample_id), path("${sample_id}/${sample_id}_genotype_calls.csv"), emit: genotyperesult, optional: true
-    //tuple val(sample_id), path("${sample_id}/${sample_id}_contigs.fa"), emit: contigs, optional: true
-    //tuple val(sample_id), path("${sample_id}/${sample_id}_filtered_contigs.fa"), emit: filtered_contigs, optional: true
-    
-    //tuple val(sample_id), path("${sample_id}/${sample_id}_variants.vcf.gz"), emit: vcf, optional: true
-    //tuple val(sample_id), path("${sample_id}/${sample_id}_consensus_blast_results.tsv"), emit: consensusmapping, optional: true
     tuple val(sample_id), path("${sample_id}/${sample_id}_consensus_seqs_report.tsv"), emit: consensus_seqs_report, optional: true
     tuple val(sample_id), path("${sample_id}/${sample_id}_consensus_seqs.fa"), emit: consensus_seqs, optional: true
     tuple val(sample_id), path("${sample_id}/logs"), emit: fluviewer_logs
@@ -73,12 +74,14 @@ process blastconcensus {
     tuple val(sample_id), path("${sample_id}_consensus_blast.csv"), emit: consensus_blast, optional:true
     tuple val(sample_id), path("${sample_id}_genotype_calls_nt.csv"), emit: genotyperesult, optional:true
     tuple val(sample_id), path("${sample_id}_seq_description.csv"), emit: seq_description, optional:true
-    tuple val(sample_id), path("${sample_id}_blastn_provenance.yml"), emit: provenance
+    tuple val(sample_id), path("${sample_id}_blastconsensus_provenance.yml"), emit: provenance
 
 
     """
-    printf -- "- process_name: blastn\\n" > ${sample_id}_blastn_provenance.yml
-    printf -- "  tool_name: blastn\\n  tool_version: \$(blastn -version 2>&1 | cut -d' ' -f2 | head -n 1)\\n" >> ${sample_id}_blastn_provenance.yml
+    printf -- "- process_name: blastconsensus\\n" > ${sample_id}_blastconsensus_provenance.yml
+    printf -- "  tool_name: blastn\\n  tool_version: \$(blastn -version 2>&1 | cut -d' ' -f2 | head -n 1)\\n" >> ${sample_id}_blastconsensus_provenance.yml
+    printf -- "  database used: ${db_dir}\\n" >> ${sample_id}_blastconsensus_provenance.yml
+    printf -- "  database_path: \$(readlink -f ${db_dir})\\n" >> ${sample_id}_blastconsensus_provenance.yml
 
     export BLASTDB="${db_dir}"
 

@@ -34,9 +34,14 @@ process mixscan {
     tuple val(sample_id), path("${sample_id}_variants_depths"), emit: snp_depth, optional: true
     tuple val(sample_id), path("${sample_id}_demixing_results.tsv"), emit: demix_results, optional: true
     tuple val(sample_id), path("${sample_id}_demix.csv"), emit: demix_report, optional: true
+    tuple val(sample_id), path("${sample_id}_mixscan_provenance.yml"), emit: provenance
 
     script:
     """      
+    printf -- "- process_name: mixscan\\n" > ${sample_id}_mixscan_provenance.yml
+    printf -- "  tool_name: Freyja\\n  tool_version: \$(freyja --version | cut -d' ' -f3)\\n" >> ${sample_id}_mixscan_provenance.yml
+    printf -- "  reference used: ${ref}\\n" >> ${sample_id}_mixscan_provenance.yml
+
     freyja variants ${alignment_bam} --variants ${sample_id}_variants --depths ${sample_id}_variants_depths --ref ${ref}
     demix_freyja_adapted.py ${sample_id}_variants.tsv ${sample_id}_variants_depths --output ${sample_id}_demixing_results.tsv --sample ${sample_id}
     """
