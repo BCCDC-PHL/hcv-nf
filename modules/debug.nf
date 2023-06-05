@@ -17,7 +17,7 @@ process maprawreads {
     
     bwa index ${ref}
     bwa mem ${ref} ${reads_1} ${reads_2} > ${sample_id}_align.sam
-    samtools view -F 2828 -q 30 -h ${sample_id}_align.sam | samtools sort -o ${sample_id}_mapped_to_db.bam
+    samtools view -F 2828 -h ${sample_id}_align.sam | samtools sort -o ${sample_id}_mapped_to_db.bam
     samtools index ${sample_id}_mapped_to_db.bam
 
     samtools depth ${sample_id}_mapped_to_db.bam > ${sample_id}_mapped_to_db.depth

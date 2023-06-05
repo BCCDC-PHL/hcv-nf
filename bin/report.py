@@ -108,7 +108,7 @@ def main(args):
         
     ]
 
-    choices = ['Check - core low mapped reads','Check - ns5b low mapped reads', 'Check - missing core/ns5b subtype', 'Check - mismatch core/ns5b subtypes','Check - ns5b sequenced bases','Check - core sequenced bases', 'Check - core mean coverage < 20', 'Check - ns5b mean coverage < 35']
+    choices = ['Check - core low mapped reads','Check - ns5b low mapped reads', 'Check - missing core/ns5b subtype', 'Check - ns5b sequenced bases','Check - core sequenced bases', 'Check - core mean coverage < 20', 'Check - ns5b mean coverage < 35','Check - mismatch core/ns5b subtypes']
 
     merge7['check'] = np.select(conditions,choices,default="PASS") 
 

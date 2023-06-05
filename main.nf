@@ -48,9 +48,6 @@ workflow{
     ch_db = Channel.fromPath(params.db)
     ch_ref = Channel.fromPath(params.refhcv)
     ch_fastq_input = Channel.fromFilePairs( params.fastq_search_path, flat: true ).map{ it -> [it[0].split('_')[0], it[1], it[2]] }.unique{ it -> it[0] }
-    //ch_fastq_input = Channel.fromFilePairs(params.fastq_input + '/*_{R1,R2}*.fastq.gz', flat: true ).map{ it -> [it[0].split('_')[0], it[1], it[2]] }.unique{ it -> it[0] }
-    //ch_basic_qc = Channel.fromPath(params.basic_qc)
-    //ch_abundance_top_n = Channel.fromPath(params.abundance_top_n)
     ch_nt = Channel.fromPath(params.nt_dir)
     ch_db_name = Channel.fromPath(params.db_name)
 
