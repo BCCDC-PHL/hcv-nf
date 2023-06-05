@@ -12,6 +12,8 @@ def main(args):
     demix_report = pd.read_csv(args.demix_report)
     qc_report = pd.read_csv(args.qc_report)
     mapped_reads_counts = pd.read_csv(args.reads_counts)
+    genotype_calls = pd.read_csv(args.genotype_nt)
+    #genotype_calls = pd.read_csv("combined_genotype_calls.csv")
 
     with open(args.fastqlist) as f:
         fqlist = f.readlines()
@@ -47,10 +49,18 @@ def main(args):
     qc_report_spread = qc_report_spread.rename(columns={'_sample_id': 'sample_id'})
 
     #process genotype results
-    #genotype_calls['sample_id'] = genotype_calls['qseqid'].apply(lambda x: re.sub("^_R_","", x))
-    #genotype_calls['sample_id'] = genotype_calls['sample_id'].apply(lambda x: x.split('_')[0])
-    #genotype_calls['amplicon'] = genotype_calls['qseqid'].apply(lambda x: x.split('|')[1])
-    #genotype_calls['qseqid'] = genotype_calls['qseqid'].apply(lambda x: x.split('|')[0])
+    genotype_calls['sample_id'] = genotype_calls['query_seq_id'].apply(lambda x: re.sub("^_R_","", x))
+    genotype_calls['sample_id'] = genotype_calls['sample_id'].apply(lambda x: x.split('_')[0])
+    genotype_calls['amplicon'] = genotype_calls['query_seq_id'].apply(lambda x: x.split('|')[1])
+    genotype_calls['query_seq_id'] = genotype_calls['query_seq_id'].apply(lambda x: x.split('|')[0])
+
+    gt_counts = genotype_calls.groupby(['sample_id','subject_names']).size().reset_index(name = 'counts')
+    gt_counts = gt_counts[gt_counts['subject_names'].str.contains('genotype') | gt_counts['subject_names'].str.contains('subtype') ]
+
+    gt_counts['nt_genotypes'] = gt_counts['subject_names'] + '(n=' + gt_counts['counts'].astype(str) + ')'
+    gt_counts['nt_genotypes'] = gt_counts['nt_genotypes'].apply(lambda x: re.sub(r'^.*?genotype', '', x).strip()).apply(lambda x: re.sub(r'^.*?subtype', '', x).strip() )
+    gt_nt = gt_counts.groupby("sample_id")["nt_genotypes"].apply(" + ".join).reset_index(name = "nt_genotypes")
+
 
     #genotype_calls_reduced = genotype_calls[['sample_id','qseqid', 'sseqid','amplicon','bitscore']]
 
@@ -83,25 +93,26 @@ def main(args):
   
     merge5 = pd.merge(merge2, demix_report, on='sample_id',how='left')
     merge6 = pd.merge(merge5, mapped_reads_counts, on='sample_id',how='left')
+    merge7 = pd.merge(merge6, gt_nt, on='sample_id', how = 'left')
 
     conditions = [
 
-        ((merge6['core_subtype'].isna()) & (merge6['core_mapped_reads'] < 50)),
-        ((merge6['ns5b_subtype'].isna()) & (merge6['ns5b_mapped_reads'] < 50)),
-        (merge6['core_subtype'].isna() | merge6['ns5b_subtype'].isna()),
-        (merge6['ns5b_sequenced_bases'].notna()) & (merge6['ns5b_sequenced_bases'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 300),
-        (merge6['core_sequenced_bases'].notna()) & (merge6['core_sequenced_bases'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 300),
-        (merge6['core_mean_coverage'].notna()) & (merge6['core_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 20),
-        (merge6['ns5b_mean_coverage'].notna()) & (merge6['ns5b_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 35),
-        ~(merge6['core_subtype'] == merge6['ns5b_subtype']) & (merge6['core_subtype'].notna() & merge6['ns5b_subtype'].notna())
+        ((merge7['core_subtype'].isna()) & (merge7['core_mapped_reads'] < 50)),
+        ((merge7['ns5b_subtype'].isna()) & (merge7['ns5b_mapped_reads'] < 50)),
+        (merge7['core_subtype'].isna() | merge7['ns5b_subtype'].isna()),
+        (merge7['ns5b_sequenced_bases'].notna()) & (merge7['ns5b_sequenced_bases'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 300),
+        (merge7['core_sequenced_bases'].notna()) & (merge7['core_sequenced_bases'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 300),
+        (merge7['core_mean_coverage'].notna()) & (merge7['core_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 20),
+        (merge7['ns5b_mean_coverage'].notna()) & (merge7['ns5b_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 35),
+        ~(merge7['core_subtype'] == merge7['ns5b_subtype']) & (merge7['core_subtype'].notna() & merge7['ns5b_subtype'].notna())
         
     ]
 
     choices = ['Check - core low mapped reads','Check - ns5b low mapped reads', 'Check - missing core/ns5b subtype', 'Check - mismatch core/ns5b subtypes','Check - ns5b sequenced bases','Check - core sequenced bases', 'Check - core mean coverage < 20', 'Check - ns5b mean coverage < 35']
 
-    merge6['check'] = np.select(conditions,choices,default="PASS") 
+    merge7['check'] = np.select(conditions,choices,default="PASS") 
 
-    merge6.to_csv(args.prefix + '_run_summary_report.csv',index=False)
+    merge7.to_csv(args.prefix + '_run_summary_report.csv',index=False)
 
 
 if __name__ == "__main__":
@@ -111,6 +122,7 @@ if __name__ == "__main__":
     parser.add_argument('--qc_report')
     parser.add_argument('--reads_counts')
     parser.add_argument('--fastqlist')
+    parser.add_argument('--genotype_nt')
     parser.add_argument('--prefix')
     args = parser.parse_args()
     main(args)

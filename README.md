@@ -14,8 +14,6 @@ nextflow run BCCDC-PHL/hcv_nf \
   --db <path/to/ref/db> \
   --ref_core <path/to/ref_core/db> \
   --ref_ns5b <path/to/ref_ns5b/db> \
-  --basic_qc <path/to/basic_qc_stats.csv> \
-  --abundance_top_n <path/to/Top_5_abundances_species.csv> \
   --outdir <path/to/output_dir> \ 
 ```
 ### Input
@@ -36,7 +34,7 @@ The required inputs are:
 | ------------- | ------------- |
 | run_summary_report.csv  | the combined summary for consensus report, genotype, qc stats, demixming results  and check column |
 | consensus_seqs.fa | consensus sequences for core and/or ns5b  |
-| genotype_calls.csv | top 10 blastn results after blast the consensus sequences to the database, some columns are in the run_summary_report.csv|
+| genotype_calls.csv | blastn results after blast the consensus sequences to the nt database, some columns are in the run_summary_report.csv|
 | demix.csv | proportions of different subtypes present in the sample, are also in the run_summary_report.csv |
 | parsed_genome_results.csv | qc stats for mean coverage, total mapped reads, median coverage, depth, percent completeness at different depth. also in the run_summary_report|
 | mapped_to_db.bam | mapping raw reads to all references in the database|

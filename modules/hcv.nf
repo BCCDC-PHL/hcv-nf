@@ -73,7 +73,7 @@ process blastconcensus {
     output:
     tuple val(sample_id), path("${sample_id}_consensus_blast.csv"), emit: consensus_blast, optional:true
     tuple val(sample_id), path("${sample_id}_genotype_calls_nt.csv"), emit: genotyperesult, optional:true
-    tuple val(sample_id), path("${sample_id}_seq_description.csv"), emit: seq_description, optional:true
+    tuple val(sample_id), path("${sample_id}_seq_description"), emit: seq_description, optional:true
     tuple val(sample_id), path("${sample_id}_blastconsensus_provenance.yml"), emit: provenance
 
 

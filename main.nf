@@ -4,6 +4,7 @@ import java.time.LocalDateTime
 
 nextflow.enable.dsl = 2
 
+include { hash_files } from './modules/hash_files.nf'
 include { pipeline_provenance } from './modules/provenance.nf'
 include { collect_provenance } from './modules/provenance.nf'
 include { fastp } from './modules/qc.nf'
@@ -46,8 +47,8 @@ workflow{
     ch_adapters = Channel.fromPath(params.adapters)
     ch_db = Channel.fromPath(params.db)
     ch_ref = Channel.fromPath(params.refhcv)
-    //ch_fastq_input = Channel.fromFilePairs( params.fastq_search_path, flat: true ).map{ it -> [it[0].split('_')[0], it[1], it[2]] }.unique{ it -> it[0] }
-    ch_fastq_input = Channel.fromFilePairs(params.fastq_input + '/*_{R1,R2}*.fastq.gz', flat: true ).map{ it -> [it[0].split('_')[0], it[1], it[2]] }.unique{ it -> it[0] }
+    ch_fastq_input = Channel.fromFilePairs( params.fastq_search_path, flat: true ).map{ it -> [it[0].split('_')[0], it[1], it[2]] }.unique{ it -> it[0] }
+    //ch_fastq_input = Channel.fromFilePairs(params.fastq_input + '/*_{R1,R2}*.fastq.gz', flat: true ).map{ it -> [it[0].split('_')[0], it[1], it[2]] }.unique{ it -> it[0] }
     //ch_basic_qc = Channel.fromPath(params.basic_qc)
     //ch_abundance_top_n = Channel.fromPath(params.abundance_top_n)
     ch_nt = Channel.fromPath(params.nt_dir)
@@ -56,6 +57,7 @@ workflow{
 
     main:
 
+    hash_files(ch_fastq_input.map{ it -> [it[0], [it[1], it[2]]] }.combine(Channel.of("fastq_input")))
     fastp( ch_fastq_input )
     cutadapter(fastp.out.trimmed_reads.combine(ch_adapters))
     
@@ -85,17 +87,18 @@ workflow{
 
     ch_combined_qc = ch_qc
         .collectFile(it -> it[1], name: "combined_qc_stats.csv", storeDir: params.outdir, keepHeader: true, skip: 1)
-        
+      
     ch_fastqlist = ch_fastq_input
         .collectFile(it -> it[0], name: "fastqlist", storeDir: params.outdir,newLine: true)
     ch_count_mapped_reads = ch_maprawreads.mappedreads
         .collectFile(it -> it[1], name: "combined_amplicon_mapped_reads_counts.csv", storeDir:params.outdir, keepHeader: true, skip: 1)
 
-    report(ch_fastqlist.combine(ch_combined_consensus).combine(ch_combined_demix).combine(ch_combined_qc).combine(ch_count_mapped_reads))
+    report(ch_fastqlist.combine(ch_combined_consensus).combine(ch_combined_demix).combine(ch_combined_qc).combine(ch_count_mapped_reads).combine(ch_combined_genotype))
 
     
     ch_provenance = genotype.out.provenance
     ch_provenance = ch_provenance.join(fastp.out.provenance).map{ it -> [it[0], [it[1] , it[2]]] }
+    ch_provenance = ch_provenance.join(hash_files.out.provenance).map{ it -> [it[0], it[1]<< it[2]] }
     ch_provenance = ch_provenance.join(cutadapter.out.provenance).map{ it -> [it[0], it[1] << it[2]] }
     ch_provenance = ch_provenance.join(ch_nt_calls.provenance).map{ it -> [it[0], it[1] << it[2]] }
     ch_provenance = ch_provenance.join(ch_mix.provenance).map{ it -> [it[0], it[1] << it[2]] }
