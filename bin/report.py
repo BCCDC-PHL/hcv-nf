@@ -54,13 +54,23 @@ def main(args):
     genotype_calls['amplicon'] = genotype_calls['query_seq_id'].apply(lambda x: x.split('|')[1])
     genotype_calls['query_seq_id'] = genotype_calls['query_seq_id'].apply(lambda x: x.split('|')[0])
 
-    gt_counts = genotype_calls.groupby(['sample_id','subject_names']).size().reset_index(name = 'counts')
+    #core amplicon
+    genotype_calls_core = genotype_calls[genotype_calls['amplicon'] == 'core']
+    gt_counts = genotype_calls_core.groupby(['sample_id','subject_names']).size().reset_index(name = 'counts')
     gt_counts = gt_counts[gt_counts['subject_names'].str.contains('genotype') | gt_counts['subject_names'].str.contains('subtype') ]
 
-    gt_counts['nt_genotypes'] = gt_counts['subject_names'] + '(n=' + gt_counts['counts'].astype(str) + ')'
-    gt_counts['nt_genotypes'] = gt_counts['nt_genotypes'].apply(lambda x: re.sub(r'^.*?genotype', '', x).strip()).apply(lambda x: re.sub(r'^.*?subtype', '', x).strip() )
-    gt_nt = gt_counts.groupby("sample_id")["nt_genotypes"].apply(" + ".join).reset_index(name = "nt_genotypes")
+    gt_counts['core_nt_genotypes'] = gt_counts['subject_names'] + '(n=' + gt_counts['counts'].astype(str) + ')'
+    gt_counts['core_nt_genotypes'] = gt_counts['core_nt_genotypes'].apply(lambda x: re.sub(r'^.*?genotype', '', x).strip()).apply(lambda x: re.sub(r'^.*?subtype', '', x).strip() )
+    core_gt_nt = gt_counts.groupby("sample_id")["core_nt_genotypes"].apply(" + ".join).reset_index(name = "core_nt_genotypes")
 
+    #ns5b amplicon
+    genotype_calls_ns5b = genotype_calls[genotype_calls['amplicon'] == 'ns5b']
+    gt_counts = genotype_calls_ns5b.groupby(['sample_id','subject_names']).size().reset_index(name = 'counts')
+    gt_counts = gt_counts[gt_counts['subject_names'].str.contains('genotype') | gt_counts['subject_names'].str.contains('subtype') ]
+
+    gt_counts['ns5b_nt_genotypes'] = gt_counts['subject_names'] + '(n=' + gt_counts['counts'].astype(str) + ')'
+    gt_counts['ns5b_nt_genotypes'] = gt_counts['ns5b_nt_genotypes'].apply(lambda x: re.sub(r'^.*?genotype', '', x).strip()).apply(lambda x: re.sub(r'^.*?subtype', '', x).strip() )
+    ns5b_gt_nt = gt_counts.groupby("sample_id")["ns5b_nt_genotypes"].apply(" + ".join).reset_index(name = "ns5b_nt_genotypes")
 
     #genotype_calls_reduced = genotype_calls[['sample_id','qseqid', 'sseqid','amplicon','bitscore']]
 
@@ -93,7 +103,8 @@ def main(args):
   
     merge5 = pd.merge(merge2, demix_report, on='sample_id',how='left')
     merge6 = pd.merge(merge5, mapped_reads_counts, on='sample_id',how='left')
-    merge7 = pd.merge(merge6, gt_nt, on='sample_id', how = 'left')
+    merge61 = pd.merge(merge6, core_gt_nt, on='sample_id',how='left')
+    merge7 = pd.merge(merge61, ns5b_gt_nt, on='sample_id', how = 'left')
 
     conditions = [
 
