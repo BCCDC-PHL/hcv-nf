@@ -13,7 +13,6 @@ def main(args):
     qc_report = pd.read_csv(args.qc_report)
     mapped_reads_counts = pd.read_csv(args.reads_counts)
     genotype_calls = pd.read_csv(args.genotype_nt)
-    #genotype_calls = pd.read_csv("combined_genotype_calls.csv")
 
     with open(args.fastqlist) as f:
         fqlist = f.readlines()
@@ -72,32 +71,6 @@ def main(args):
     gt_counts['ns5b_nt_genotypes'] = gt_counts['ns5b_nt_genotypes'].apply(lambda x: re.sub(r'^.*?genotype', '', x).strip()).apply(lambda x: re.sub(r'^.*?subtype', '', x).strip() )
     ns5b_gt_nt = gt_counts.groupby("sample_id")["ns5b_nt_genotypes"].apply(" + ".join).reset_index(name = "ns5b_nt_genotypes")
 
-    #genotype_calls_reduced = genotype_calls[['sample_id','qseqid', 'sseqid','amplicon','bitscore']]
-
-    #top1 genotype
-    #best_bitscores = genotype_calls_reduced.groupby(['qseqid','amplicon']).max('bitcore').reset_index()
-    #best_gt = pd.merge(genotype_calls_reduced, best_bitscores, on=['qseqid', 'amplicon','bitscore'])
-
-    #best_gt = best_gt.groupby(['sample_id', 'amplicon']).agg({'sseqid': [('sseqid', ','.join)],'bitscore':[('bitscore',list)]}).reset_index()
-    #best_gt = pd.DataFrame(best_gt.values, columns = ['sample_id','amplicon','top1_genotype','top1_bitscore'])
-    #best_gt_spread = best_gt.pivot(index=['sample_id'],columns='amplicon',values=['top1_genotype','top1_bitscore']).reset_index()
-    #best_gt_spread.columns = best_gt_spread.columns.map(lambda index: f'{index[1]}_{index[0]}')
-    #best_gt_spread = best_gt_spread.rename(columns={'_sample_id': 'sample_id'})
-
-    #top2 genotype
-
-    #res = pd.merge(genotype_calls_reduced,best_bitscores,  on=['qseqid', 'amplicon','bitscore'], how='outer',indicator=True).query('_merge != "both"').drop(columns='_merge')
-    #second_bitscores = res.groupby(['qseqid','amplicon']).max('bitcore').reset_index()
-    #second_gt = pd.merge(res, second_bitscores, on=['qseqid', 'amplicon','bitscore'])
-
-    #second_gt = second_gt.groupby(['sample_id', 'amplicon']).agg({'sseqid': [('sseqid', ','.join)],'bitscore':[('bitscore',list)]}).reset_index()
-    #second_gt = pd.DataFrame(second_gt.values, columns = ['sample_id','amplicon','top2_genotype','top2_bitscore'])
-    #second_gt_spread = second_gt.pivot(index=['sample_id'],columns='amplicon',values=['top2_genotype','top2_bitscore']).reset_index()
-    #second_gt_spread.columns = second_gt_spread.columns.map(lambda index: f'{index[1]}_{index[0]}')
-    #second_gt_spread = second_gt_spread.rename(columns={'_sample_id': 'sample_id'})
-    #merge 1 with consensus report
-    #merge0 = pd.merge(fqlist_df,basic_qc[['sample_id','total_bases']],on = 'sample_id', how='left')
-    #merge01 = pd.merge(merge0,abundance,on = 'sample_id', how='left')
     merge1 = pd.merge(fqlist_df,consensus_report_spread, on = 'sample_id', how='left')
     merge2 = pd.merge(merge1, qc_report_spread, on='sample_id',how='left')
   

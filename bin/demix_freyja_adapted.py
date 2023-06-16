@@ -83,7 +83,7 @@ def demix(variants, depths, output, eps, barcodes, covcut):
         reformated.append(i)
 
 
-    result = pd.DataFrame(data=[[args.sample,reformated]], columns=['sample_id','demix_results'])
+    result = pd.DataFrame(data=[[args.sample,reformated]], columns=['sample_id','demix_results_core'])
     result.to_csv(args.sample+'_demix.csv',index = False)
 
 def main(args):
