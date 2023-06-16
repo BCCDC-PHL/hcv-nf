@@ -49,7 +49,7 @@ workflow{
     ch_ref = Channel.fromPath(params.refhcv)
     ch_fastq_input = Channel.fromFilePairs( params.fastq_search_path, flat: true ).map{ it -> [it[0].split('_')[0], it[1], it[2]] }.unique{ it -> it[0] }
     ch_nt = Channel.fromPath(params.nt_dir)
-    ch_db_name = Channel.fromPath(params.db_name)
+    ch_db_name = Channel.of(params.db_name)
 
 
     main:
