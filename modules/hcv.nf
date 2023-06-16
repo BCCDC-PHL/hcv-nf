@@ -29,7 +29,7 @@ process genotype {
     printf -- "  database sha256: \$(shasum -a 256 ${params.db} | awk '{print \$1}')\\n" >> ${sample_id}_genotype_provenance.yml
 
 
-    genotype_v1.py -f ${reads_1} -r ${reads_2} -o ${sample_id} -d ${params.db} -m ${params.mode}
+    genotype.py -f ${reads_1} -r ${reads_2} -o ${sample_id} -d ${params.db} -m ${params.mode}
 
     """
 
@@ -54,14 +54,14 @@ process makeconsensus {
     tuple val(sample_id), path("${sample_id}/logs"), emit: fluviewer_logs
 
     """
-    genotype_v1_2.py -f ${reads_1} -r ${reads_2} -s ${ref_seq_map} -o ${sample_id} -d ${params.db} -m ${params.mode}
+    makeconsensus.py -f ${reads_1} -r ${reads_2} -s ${ref_seq_map} -o ${sample_id} -d ${params.db} -m ${params.mode}
 
     """
 
 }
 
 
-process blastconcensus {
+process blastconsensus {
 
     errorStrategy 'ignore'
 

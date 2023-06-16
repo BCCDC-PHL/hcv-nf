@@ -4,38 +4,38 @@ import java.time.LocalDateTime
 
 nextflow.enable.dsl = 2
 
-include { hash_files } from './modules/hash_files.nf'
+include { hash_files }          from './modules/hash_files.nf'
 include { pipeline_provenance } from './modules/provenance.nf'
-include { collect_provenance } from './modules/provenance.nf'
-include { fastp } from './modules/qc.nf'
-include { fastp_json_to_csv } from './modules/qc.nf'
-include { cutadapter } from './modules/qc.nf'
-include { genotype } from './modules/hcv.nf'
-include { makeconsensus } from './modules/hcv.nf'
-include { blastconcensus } from './modules/hcv.nf'
-include { maprawreads } from './modules/debug.nf'
-include { plotdepthdb } from './modules/debug.nf'
-include {mapreadstoref} from './modules/mix.nf'
-include { mixscan } from './modules/mix.nf'
-include { findamplicon } from './modules/findamplicon.nf'
-include { QualiMap} from './modules/QualiMap.nf'
-include { parseQMresults} from './modules/parseQMresults.nf'
-include { segcov} from './modules/segcov.nf'
-include { mafftraxmltree } from './modules/mafftraxmltree.nf'
-include { report } from './modules/report.nf'
-// prints to the screen and to the log
-        log.info """
+include { collect_provenance }  from './modules/provenance.nf'
+include { fastp }               from './modules/qc.nf'
+include { fastp_json_to_csv }   from './modules/qc.nf'
+include { cutadapter }          from './modules/qc.nf'
+include { genotype }            from './modules/hcv.nf'
+include { makeconsensus }       from './modules/hcv.nf'
+include { blastconsensus }      from './modules/hcv.nf'
+include { maprawreads }         from './modules/debug.nf'
+include { plotdepthdb }         from './modules/debug.nf'
+include { mapreadstoref }       from './modules/mix.nf'
+include { mixscan }             from './modules/mix.nf'
+include { findamplicon }        from './modules/findamplicon.nf'
+include { QualiMap }            from './modules/QualiMap.nf'
+include { parseQMresults}       from './modules/parseQMresults.nf'
+include { segcov}               from './modules/segcov.nf'
+include { mafftraxmltree }      from './modules/mafftraxmltree.nf'
+include { report }              from './modules/report.nf'
 
-                 FluViewer Pipeline
-                 ===================================
-                 projectDir    : ${projectDir}
-                 launchDir     : ${launchDir}
-                 mode          : ${params.mode}
-                 database      : ${params.db}
-                 fastqInputDir : ${params.fastq_input}
-                 outdir        : ${params.outdir}
-                 """
-                 .stripIndent()
+// prints to the screen and to the log
+log.info """
+         BCCDC-PHL/hcv-nf Pipeline
+         ===================================
+         projectDir    : ${projectDir}
+         launchDir     : ${launchDir}
+         mode          : ${params.mode}
+         database      : ${params.db}
+         fastqInputDir : ${params.fastq_input}
+         outdir        : ${params.outdir}
+         """
+         .stripIndent()
 
 workflow{
     ch_start_time = Channel.of(LocalDateTime.now())
@@ -67,7 +67,7 @@ workflow{
     genotype(cutadapter.out.out_reads)
     findamplicon(genotype.out.filtered_contigs)
     ch_consensus = makeconsensus(cutadapter.out.out_reads.combine(findamplicon.out.ref_seqs_mapping, by : 0))
-    ch_nt_calls = blastconcensus(ch_consensus.consensus_seqs.combine(ch_nt).combine(ch_db_name))
+    ch_nt_calls = blastconsensus(ch_consensus.consensus_seqs.combine(ch_nt).combine(ch_db_name))
     mafftraxmltree(makeconsensus.out.consensus_seqs)
     QualiMap(makeconsensus.out.alignment)
     ch_qc = parseQMresults(QualiMap.out.genome_results)
