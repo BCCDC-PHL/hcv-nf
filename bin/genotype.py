@@ -193,20 +193,75 @@ def assemble_contigs(output, fwd_reads, rev_reads, contig_type='scaffolds'):
     '''Assmebles contigs from fwd_reads and rev_reads FASTQ files. Sends output to spades_out_dir.
     Returns path to contigs FASTA file.'''
     print('Assembling reads into contigs...')
+
     spades_out = os.path.join(output, output + '_spades_results')
     terminal_command = f'spades.py --rnaviral --isolate -k 15 21 25 -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'
-    #terminal_command = f'spades.py --careful -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'
+    #terminal_command = f'spades.py -k 15,21,25 --careful --only-assembler -1 {sampled1} -2 {sampled2} -o {spades_out}'
     error_msg = f'spades terminated with errors while assembling reads into contigs. Please refer to /{output}/logs/ for output logs.'
     stdout_file = os.path.join(output, 'logs', output + '_spades_stdout.txt')
     stderr_file = os.path.join(output, 'logs', output + '_spades_stderr.txt')
     run(terminal_command, error_msg, stdout_file, stderr_file)
-    old_contigs = os.path.join(spades_out, f'{contig_type}.fasta')
-    if os.path.exists(old_contigs) == False:
+    old_contigs_1 = os.path.join(spades_out, f'{contig_type}.fasta')
+    if os.path.exists(old_contigs_1) == False:
         print(f'\nDONE: No {contig_type} assembled from reads.')
-        old_contigs = os.path.join(spades_out, f'contigs.fasta')
+        old_contigs_1 = os.path.join(spades_out, f'contigs.fasta')
     #    #exit(0)
     contigs = os.path.join(output, output + '_contigs.fa')
-    sh.copy2(old_contigs, contigs)
+    #sh.copy2(old_contigs, contigs)
+    sampled1 = os.path.join(output + '_sampled_R1.fq ')
+    sampled2 = os.path.join(output + '_sampled_R2.fq ')
+    terminal_command = (f'reformat.sh in1={fwd_reads} in2={rev_reads} out1={sampled1} out2={sampled2} samplerate=0.1')
+    #error_msg = f'subsampling with reformat terminated with errors Please refer to /{output}/logs/ for output logs.'
+    #stdout_file = os.path.join(output, 'logs', output + '_subsampling_stdout.txt')
+    #stderr_file = os.path.join(output, 'logs', output + '_subsampling_stderr.txt')
+
+    completed_process = sp.run(terminal_command, shell=True)
+    if completed_process.returncode != 0: #if subsampling failed then run spades careful without subsampling 
+        spades_out = os.path.join(output, output + '_spades_results_careful')
+        terminal_command = f'spades.py -k 15,21,25 --careful --only-assembler -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'
+        completed_process = sp.run(terminal_command, shell=True)
+        if completed_process.returncode != 0: #if spades careful failed, then return old_contigs_1
+            sh.copy2(old_contigs_1, contigs)
+            return contigs
+
+    #run(terminal_command, error_msg, stdout_file, stderr_file)
+    spades_out = os.path.join(output, output + '_spades_results_careful')
+    #otherwise if subsampling is successful, then run spades with careful with subsampled data
+    terminal_command = f'spades.py -k 15,21,25 --careful --only-assembler -1 {sampled1} -2 {sampled2} -o {spades_out}'
+    error_msg = f'spades terminated with errors while assembling reads into contigs. Please refer to /{output}/logs/ for output logs.'
+    stdout_file = os.path.join(output, 'logs', output + '_spades_stdout.txt')
+    stderr_file = os.path.join(output, 'logs', output + '_spades_stderr.txt')
+
+    log_files = {}
+    for file, dest in zip([stdout_file, stderr_file], ['stdout', 'stderr']):
+        if file != None:
+            log_files[dest] = open(file, 'w')
+            log_files[dest].write('*' * 80 + '\n')
+            log_files[dest].write('Terminal command:\n')
+            log_files[dest].write(terminal_command + '\n')
+            log_files[dest].write('*' * 80 + '\n')
+        else:
+            log_files[dest] = None
+    completed_process = sp.run(terminal_command, stdout=log_files['stdout'], stderr=log_files['stderr'], shell=True)  
+    #completed_process = sp.run(terminal_command, shell=True)
+        #run(terminal_command, error_msg, stdout_file, stderr_file)
+    if completed_process.returncode != 0: # if spades with careful failed then return old_contigs_1
+        sh.copy2(old_contigs_1, contigs)
+        return contigs
+    
+    old_contigs_2 = os.path.join(spades_out, f'{contig_type}.fasta')
+    if os.path.exists(old_contigs_2) == False:
+        print(f'\nDONE: No {contig_type} assembled from reads.')
+        old_contigs_2 = os.path.join(spades_out, f'contigs.fasta')
+    #    #exit(0)
+    contigs = os.path.join(output, output + '_contigs.fa')
+    #sh.copy2(old_contigs, contigs)
+    terminal_command = f'cat {old_contigs_1} {old_contigs_2} > {contigs}'
+    error_msg = f'cat terminated with errors while concat contigs. Please refer to /{output}/logs/ for output logs.'
+    stdout_file = os.path.join(output, 'logs', output + '_cat_stdout.txt')
+    stderr_file = os.path.join(output, 'logs', output + '_cat_stderr.txt')
+    run(terminal_command, error_msg, stdout_file, stderr_file)
+
     return contigs
 
 
@@ -262,8 +317,12 @@ def filter_alignments(output, blast_out, min_cov, min_id):
     blast_results = blast_results[(blast_results['qlen'] >= 300)]
     best_bitscores = blast_results[['qseqid', 'bitscore']].groupby('qseqid').max().reset_index()
     blast_results = pd.merge(blast_results, best_bitscores, on=['qseqid', 'bitscore'])
-    # separate contig if it matches to both core and ns5b region
-
+    best_bitscores = blast_results[['amplicon','subtype', 'bitscore']].groupby(['amplicon','subtype']).max().reset_index()
+    blast_results = pd.merge(blast_results, best_bitscores, on=['amplicon','subtype', 'bitscore'])
+    #only allow one contig to one subtype, with the same bitscore
+    cols=['amplicon','subtype','bitscore']
+    blast_results = blast_results.sort_values(by=['bitscore'],ascending=False)
+    blast_results = blast_results.drop_duplicates(cols, keep='first')
 
     # De-duplicate sheet
     cols = ['qseqid', 'subtype', 'amplicon']
