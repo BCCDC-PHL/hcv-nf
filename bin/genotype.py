@@ -315,10 +315,12 @@ def filter_alignments(output, blast_out, min_cov, min_id):
     blast_results.to_csv(os.path.join(output, output + '_blast_results_prefilter.csv'))
     # Keep only best alingments for each contig (by bitscore)
     blast_results = blast_results[(blast_results['qlen'] >= 300)]
-    best_bitscores = blast_results[['qseqid', 'bitscore']].groupby('qseqid').max().reset_index()
-    blast_results = pd.merge(blast_results, best_bitscores, on=['qseqid', 'bitscore'])
+    best_bitscores = blast_results[['qseqid', 'bitscore','amplicon']].groupby(['qseqid','amplicon']).max().reset_index()
+    blast_results = pd.merge(blast_results, best_bitscores, on=['qseqid', 'bitscore','amplicon'])
     best_bitscores = blast_results[['amplicon','subtype', 'bitscore']].groupby(['amplicon','subtype']).max().reset_index()
     blast_results = pd.merge(blast_results, best_bitscores, on=['amplicon','subtype', 'bitscore'])
+    #best_bitscores = blast_results.groupby(['amplicon','subtype']).head(1).reset_index()
+
     #only allow one contig to one subtype, with the same bitscore
     cols=['amplicon','subtype','bitscore']
     blast_results = blast_results.sort_values(by=['bitscore'],ascending=False)
@@ -356,6 +358,7 @@ def write_best_contigs_fasta(output, blast_results, contigs):
     '''Looks up best contigs in contigs FASTA file and writes them to their own FASTA file.
     Returns path to best contigs FASTA file.'''
     # De-duplicate rows from contigs with best alignments to multiple ref seqs 
+    #TODO: add a condition to not write the contig if the same sequence already 
     cols = ['qseqid', 'segment','subtype', 'slen','qstart','qend','amplicon']
     
     blast_results = blast_results[cols].drop_duplicates(subset=['qseqid', 'segment','subtype', 'slen','amplicon'], keep='first')
@@ -375,6 +378,7 @@ def write_best_contigs_fasta(output, blast_results, contigs):
     # Write best contigs to FASTA
     with open(best_contigs, 'w') as output_file:
         contig_counter = 1
+        seqs_to_write = {}
         for index in blast_results.index:
             contig_name = blast_results['qseqid'][index]
             segment = blast_results['segment'][index]
@@ -382,8 +386,15 @@ def write_best_contigs_fasta(output, blast_results, contigs):
             segment_length = blast_results['slen'][index]
             amplicon = blast_results['amplicon'][index]
             header = f'>{output}_seq_{contig_counter}|{amplicon}|{segment}|{subtype}|{segment_length}'
+            if contig_seqs[contig_name] in seqs_to_write.values() and len(contig_seqs[contig_name]) < 600 :
+                continue
+            
+        
+            seqs_to_write[contig_name] = ''
+            seqs_to_write[contig_name] += contig_seqs[contig_name]
             output_file.write(header + '\n')
             output_file.write(contig_seqs[contig_name] + '\n')
+
             contig_counter += 1
     return best_contigs
 
