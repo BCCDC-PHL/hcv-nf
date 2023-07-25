@@ -82,17 +82,20 @@ def main(args):
     conditions = [
 
         ((merge7['core_subtype'].isna()) & (merge7['core_mapped_reads'] < 50)),
-        ((merge7['ns5b_subtype'].isna()) & (merge7['ns5b_mapped_reads'] < 50)),
+        ((merge7['ns5b_subtype'].isna()) & (merge7['ns5b_mapped_reads'] < 80)),
         (merge7['core_subtype'].isna() | merge7['ns5b_subtype'].isna()),
         (merge7['ns5b_sequenced_bases'].notna()) & (merge7['ns5b_sequenced_bases'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 300),
         (merge7['core_sequenced_bases'].notna()) & (merge7['core_sequenced_bases'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 300),
         (merge7['core_mean_coverage'].notna()) & (merge7['core_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 20),
-        (merge7['ns5b_mean_coverage'].notna()) & (merge7['ns5b_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 35),
+        (merge7['ns5b_mean_coverage'].notna()) & (merge7['ns5b_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 20),
+        (merge7['core_proportion_genome_covered_over_20x'].notna()) & (merge7['core_proportion_genome_covered_over_20x'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(float) < 0.9),
+        (merge7['ns5b_proportion_genome_covered_over_20x'].notna()) & (merge7['ns5b_proportion_genome_covered_over_20x'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(float) < 0.9),
+
         ~(merge7['core_subtype'] == merge7['ns5b_subtype']) & (merge7['core_subtype'].notna() & merge7['ns5b_subtype'].notna())
         
     ]
 
-    choices = ['Check - core low mapped reads','Check - ns5b low mapped reads', 'Check - missing core/ns5b subtype', 'Check - ns5b sequenced bases','Check - core sequenced bases', 'Check - core mean coverage < 20', 'Check - ns5b mean coverage < 35','Check - mismatch core/ns5b subtypes']
+    choices = ['Check - core low mapped reads','Check - ns5b low mapped reads', 'Check - missing core/ns5b subtype', 'Check - ns5b sequenced bases','Check - core sequenced bases', 'Check - core mean coverage < 20', 'Check - ns5b mean coverage < 20','Check - core coverage at 20X  < 0.9','Check - ns5b coverage at 20X < 0.9','Check - mismatch core/ns5b subtypes']
 
     merge7['check'] = np.select(conditions,choices,default="PASS") 
 
