@@ -2,7 +2,6 @@ name: hcv-r
 channels:
 - conda-forge
 - bioconda
-- defaults
 dependencies:
 - samtools=1.14
 - r-base=4.1

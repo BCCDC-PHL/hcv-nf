@@ -1,6 +1,5 @@
 name: hcv-freyja
 channels:
-- defaults
 - bioconda
 - conda-forge
 
