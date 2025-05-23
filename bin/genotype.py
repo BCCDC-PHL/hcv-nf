@@ -195,7 +195,7 @@ def assemble_contigs(output, fwd_reads, rev_reads, contig_type='scaffolds'):
     print('Assembling reads into contigs...')
 
     spades_out = os.path.join(output, output + '_spades_results')
-    terminal_command = f'spades.py --rnaviral --isolate -k 15 21 25 --seed 42 -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'
+    terminal_command = f'spades.py --rnaviral --isolate -k 15 21 25 -1 {fwd_reads} -2 {rev_reads} -o {spades_out}'
     #terminal_command = f'spades.py -k 15,21,25 --careful --only-assembler -1 {sampled1} -2 {sampled2} -o {spades_out}'
     error_msg = f'spades terminated with errors while assembling reads into contigs. Please refer to /{output}/logs/ for output logs.'
     stdout_file = os.path.join(output, 'logs', output + '_spades_stdout.txt')
@@ -210,7 +210,7 @@ def assemble_contigs(output, fwd_reads, rev_reads, contig_type='scaffolds'):
     #sh.copy2(old_contigs, contigs)
     sampled1 = os.path.join(output + '_sampled_R1.fq ')
     sampled2 = os.path.join(output + '_sampled_R2.fq ')
-    terminal_command = (f'reformat.sh in1={fwd_reads} in2={rev_reads} out1={sampled1} out2={sampled2} samplerate=0.1')
+    terminal_command = (f'reformat.sh in1={fwd_reads} in2={rev_reads} out1={sampled1} out2={sampled2} samplerate=0.1 sampleseed=1234')
     #error_msg = f'subsampling with reformat terminated with errors Please refer to /{output}/logs/ for output logs.'
     #stdout_file = os.path.join(output, 'logs', output + '_subsampling_stdout.txt')
     #stderr_file = os.path.join(output, 'logs', output + '_subsampling_stderr.txt')
