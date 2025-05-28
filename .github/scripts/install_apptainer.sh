@@ -6,8 +6,8 @@ wget https://raw.githubusercontent.com/apptainer/apptainer/main/tools/install-un
 
 chmod +x install-unprivileged.sh
 
-mkdir -p /opt/shared/apptainer-1.3.2
+mkdir -p /opt/apptainer
 
-./install-unprivileged.sh /opt/shared/apptainer
+./install-unprivileged.sh /opt/apptainer
 
 echo "/opt/apptainer/bin" >> $GITHUB_PATH
