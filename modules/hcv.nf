@@ -10,7 +10,7 @@ process genotype {
 
 
     input:
-    tuple val(sample_id), path(reads_1), path(reads_2)
+    tuple val(sample_id), path(reads_1), path(reads_2), path(db)
 
     output:
     tuple val(sample_id), path("${sample_id}/${sample_id}_blast_results_prefilter.csv"), emit: allblastresult, optional: true
@@ -24,12 +24,12 @@ process genotype {
     printf -- "- process_name: genotype\\n" > ${sample_id}_genotype_provenance.yml
     printf -- "  tool_name: Spades\\n  tool_version: \$(spades.py --version | cut -d' ' -f4)\\n" >> ${sample_id}_genotype_provenance.yml
     printf -- "  tool_name: blastn\\n  tool_version: \$(blastn -version | cut -d' ' -f2 | head -n 1)\\n" >> ${sample_id}_genotype_provenance.yml
-    printf -- "  database used: ${params.db}\\n" >> ${sample_id}_genotype_provenance.yml
-    printf -- "  database_path: \$(readlink -f ${params.db})\\n" >> ${sample_id}_genotype_provenance.yml
-    printf -- "  database sha256: \$(shasum -a 256 ${params.db} | awk '{print \$1}')\\n" >> ${sample_id}_genotype_provenance.yml
+    printf -- "  database used: ${db}\\n" >> ${sample_id}_genotype_provenance.yml
+    printf -- "  database_path: \$(readlink -f ${db})\\n" >> ${sample_id}_genotype_provenance.yml
+    printf -- "  database sha256: \$(shasum -a 256 ${db} | awk '{print \$1}')\\n" >> ${sample_id}_genotype_provenance.yml
 
 
-    genotype.py -f ${reads_1} -r ${reads_2} -o ${sample_id} -d ${params.db} -m ${params.mode}
+    genotype.py -f ${reads_1} -r ${reads_2} -o ${sample_id} -d ${db} -m ${params.mode}
 
     """
 
@@ -45,7 +45,7 @@ process makeconsensus {
 
 
     input:
-    tuple val(sample_id), path(reads_1), path(reads_2), path(ref_seq_map)
+    tuple val(sample_id), path(reads_1), path(reads_2), path(ref_seq_map), path(db)
 
     output:
     tuple val(sample_id), path("${sample_id}/${sample_id}*.bam*"), emit: alignment, optional: true
@@ -54,7 +54,7 @@ process makeconsensus {
     tuple val(sample_id), path("${sample_id}/logs"), emit: fluviewer_logs
 
     """
-    makeconsensus.py -f ${reads_1} -r ${reads_2} -s ${ref_seq_map} -o ${sample_id} -d ${params.db} -m ${params.mode}
+    makeconsensus.py -f ${reads_1} -r ${reads_2} -s ${ref_seq_map} -o ${sample_id} -d ${db} -m ${params.mode}
 
     """
 

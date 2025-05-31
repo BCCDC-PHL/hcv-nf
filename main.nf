@@ -43,9 +43,12 @@ workflow{
     ch_pipeline_version = Channel.of(workflow.manifest.version)
 
     ch_pipeline_provenance = pipeline_provenance(ch_pipeline_name.combine(ch_pipeline_version).combine(ch_start_time))
-
+    
     ch_adapters = Channel.fromPath(params.adapters)
     ch_db = Channel.fromPath(params.db)
+    ch_ref_core = Channel.fromPath(params.ref_core)
+    ch_ref_ns5b = Channel.fromPath(params.ref_ns5b)
+
     ch_ref = Channel.fromPath(params.refhcv)
     ch_fastq_input = Channel.fromFilePairs( params.fastq_search_path, flat: true ).map{ it -> [it[0].split('_')[0], it[1], it[2]] }.unique{ it -> it[0] }
     ch_nt = Channel.fromPath(params.nt_dir)
@@ -64,11 +67,14 @@ workflow{
     mapreadstoref(cutadapter.out.out_reads.combine(ch_ref)) //mapping raw reads to ref 1_AJ851228 for mix variant scan purpose
     plotdepthdb(ch_maprawreads.dbdepth)
     ch_mix = mixscan(mapreadstoref.out.alignment.combine(ch_ref))
-    genotype(cutadapter.out.out_reads)
-    findamplicon(genotype.out.filtered_contigs)
-    ch_consensus = makeconsensus(cutadapter.out.out_reads.combine(findamplicon.out.ref_seqs_mapping, by : 0))
+    genotype(cutadapter.out.out_reads.combine(ch_db))
+
+    ch_contigs = genotype.out.filtered_contigs.combine(ch_ref_core).combine(ch_ref_ns5b)
+    ch_contigs.view()
+    findamplicon(ch_contigs)
+    ch_consensus = makeconsensus(cutadapter.out.out_reads.combine(findamplicon.out.ref_seqs_mapping, by : 0).combine(ch_db))
     ch_nt_calls = blastconsensus(ch_consensus.consensus_seqs.combine(ch_nt).combine(ch_db_name))
-    mafftraxmltree(makeconsensus.out.consensus_seqs)
+    mafftraxmltree(makeconsensus.out.consensus_seqs.combine(ch_ref_core).combine(ch_ref_ns5b))
     QualiMap(makeconsensus.out.alignment)
     ch_qc = parseQMresults(QualiMap.out.genome_results)
     segcov(makeconsensus.out.alignment)

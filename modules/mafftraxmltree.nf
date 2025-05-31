@@ -8,7 +8,7 @@ process mafftraxmltree {
 
 
   input:
-  tuple val(sample_id), path(consensus)
+  tuple val(sample_id), path(consensus), path(ref_core),path(ref_ns5b)
 
   output:
   tuple val(sample_id), path("RAxML_bestTree.${sample_id}_ns5b"), emit: ns5b_besttree, optional: true
@@ -25,13 +25,13 @@ process mafftraxmltree {
   grep -A1 '|ns5b|' ${consensus} > ${sample_id}_ns5b_consensus.fa
 
   if [ -s ${sample_id}_core_consensus.fa ]; then
-    cat ${params.ref_core} ${sample_id}_core_consensus.fa > mafftinput_core.fa
+    cat ${ref_core} ${sample_id}_core_consensus.fa > mafftinput_core.fa
     mafft --reorder --adjustdirection --anysymbol --thread 4 --auto mafftinput_core.fa > ${sample_id}_mafftoutput_core
     raxmlHPC -f d -p 12345 -s ${sample_id}_mafftoutput_core -m GTRCAT -n ${sample_id}_core
   fi
 
   if [ -s ${sample_id}_ns5b_consensus.fa ]; then
-    cat ${params.ref_ns5b} ${sample_id}_ns5b_consensus.fa > mafftinput_ns5b.fa
+    cat ${ref_ns5b} ${sample_id}_ns5b_consensus.fa > mafftinput_ns5b.fa
     mafft --reorder --adjustdirection --anysymbol --thread 4 --auto mafftinput_ns5b.fa > ${sample_id}_mafftoutput_ns5b
     raxmlHPC -f d -p 12345 -s ${sample_id}_mafftoutput_ns5b -m GTRCAT -n ${sample_id}_ns5b
   fi

@@ -2,6 +2,8 @@ name: Build and Push Container Images file
 
 on:
   push:
+    tag:
+      - v*
   workflow_dispatch:
 
 env:
