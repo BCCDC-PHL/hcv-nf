@@ -70,7 +70,6 @@ workflow{
     genotype(cutadapter.out.out_reads.combine(ch_db))
 
     ch_contigs = genotype.out.filtered_contigs.combine(ch_ref_core).combine(ch_ref_ns5b)
-    ch_contigs.view()
     findamplicon(ch_contigs)
     ch_consensus = makeconsensus(cutadapter.out.out_reads.combine(findamplicon.out.ref_seqs_mapping, by : 0).combine(ch_db))
     ch_nt_calls = blastconsensus(ch_consensus.consensus_seqs.combine(ch_nt).combine(ch_db_name))
