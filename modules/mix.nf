@@ -13,7 +13,7 @@ process mapreadstoref {
     
     bwa index ${ref}
     bwa mem ${ref} ${reads_1} ${reads_2} > ${sample_id}_align.sam
-    samtools view -f 1 -F 2828 -q 30 -h ${sample_id}_align.sam | samtools sort -o ${sample_id}_mapped_to_ref.bam
+    samtools view -f 1 -F 2316 -q 30 -h ${sample_id}_align.sam | samtools sort -o ${sample_id}_mapped_to_ref.bam
     samtools index ${sample_id}_mapped_to_ref.bam
 
     """

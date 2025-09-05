@@ -2,7 +2,21 @@
 
 The process is partially adapted from [FluViewer tool](https://github.com/KevinKuchinski/FluViewer) for genotype HCV amplicon sequencing data. Samples are only amplied in the core (361-764) and ns5b region (8803-9191). This is a purely assembly-based approach. The assembly is done using SPades. Top 10 genotypes are produced when blast (blastn) the contigs to the database. 
 
-The workflow is captured in the diagram below![diagram](pics/workflow.PNG).
+
+```mermaid
+graph TD
+
+A[Input FASTA Sequences] --> B[Sequence Quality Control]
+B --> C[Assembly]
+C --> D[BLAST Search]
+D --> DA[HCV database]
+D --> DB[Core NT database]
+D --> E[Build Consensus Sequences]
+E --> F[Qualimap]
+E --> G[Build tree]
+DA --> G
+G --> H[Collect Reports]
+```
 
 ## Usage
 
@@ -24,7 +38,7 @@ The required inputs are:
 - path to the full length HCV reference database
 - path to reference database that have core side extraced
 - path to reference database that have ns5b side extraced
-- path to directory containing the BLAST `nt` database
+- path to directory containing the BLAST `core_nt` database
 - outdir directory to store the results
 
 
@@ -34,7 +48,7 @@ The required inputs are:
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | run_summary_report.csv    | the combined summary for consensus report, genotype, qc stats, demixming results  and check column                                              |
 | consensus_seqs.fa         | consensus sequences for core and/or ns5b                                                                                                        |
-| genotype_calls.csv        | blastn results after blast the consensus sequences to the nt database, some columns are in the run_summary_report.csv                           |
+| genotype_calls.csv        | blastn results after blast the consensus sequences to the core_nt database, some columns are in the run_summary_report.csv                           |
 | demix.csv                 | proportions of different subtypes present in the sample, are also in the run_summary_report.csv                                                 |
 | parsed_genome_results.csv | qc stats for mean coverage, total mapped reads, median coverage, depth, percent completeness at different depth. also in the run_summary_report |
 | mapped_to_db.bam          | mapping raw reads to all references in the database                                                                                             |

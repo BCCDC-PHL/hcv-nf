@@ -8,3 +8,9 @@ dependencies:
 - r-tidyverse
 - r-ggplot2
 - r-scales
+- r-phytools
+- bioconductor-ggtree
+- r-seqinr
+- bioconductor-biostrings
+- r-ggmsa
+- r-ape

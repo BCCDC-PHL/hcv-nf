@@ -28,26 +28,26 @@ coverage$amplicon = ifelse(coverage$position < 850, "core", ifelse(coverage$posi
 
 core = coverage[coverage$amplicon == "core",]
 
-top3_core <- core %>% group_by(segment) %>% summarise(total_depth = sum(depth)) %>% top_n(n=3)
+top3_core <- core %>% group_by(segment) %>% summarise(total_depth = sum(depth)) %>% top_n(n=1)
 core = core[core$segment %in% top3_core$segment,]
 
 
 ns5b = coverage[coverage$amplicon == "ns5b",] 
-top3_ns5b <- ns5b %>% group_by(segment) %>% summarise(total_depth = sum(depth)) %>% top_n(n=3)
+top3_ns5b <- ns5b %>% group_by(segment) %>% summarise(total_depth = sum(depth)) %>% top_n(n=1)
 ns5b = ns5b[ns5b$segment %in% top3_ns5b$segment,]
 
 
 p1 <- ggplot(core, aes(x=position, y=depth)) +
   geom_line() + 
   scale_y_log10(labels=comma)+ xlim(361,764) +
-  facet_wrap(~ segment, ncol = 1) + ggtitle(paste0(filename," - core - top 3 references mapped"))
+  facet_wrap(~ segment, ncol = 1) + ggtitle(paste0(filename," - core - top 1 reference mapped"))
 
 p1 <- p1 +  scale_x_continuous(breaks=c(361,400,450,500,550, 600,650,700,764))
 
 p2 <- ggplot(ns5b, aes(x=position, y=depth)) +
   geom_line() + 
   scale_y_log10(labels=comma)+ xlim(8803, 9191) +
-  facet_wrap(~ segment, ncol = 1) + ggtitle(paste0(filename," - ns5b - top 3 references mapped"))
+  facet_wrap(~ segment, ncol = 1) + ggtitle(paste0(filename," - ns5b - top 1 reference mapped"))
 
 p2 <- p2 + scale_x_continuous(breaks=c(8803,8850, 8900,8950, 9000,9050,9100, 9150, 9191))
 
