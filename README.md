@@ -6,16 +6,16 @@ The process is partially adapted from [FluViewer tool](https://github.com/KevinK
 ```mermaid
 graph TD
 
-A[Input FASTA Sequences] --> B[Sequence Quality Control]
+A[Input FASTA sequences] --> B[Sequence quality control]
 B --> C[Assembly]
-C --> D[BLAST Search]
+C --> D[BLAST search]
 D --> DA[HCV database]
 D --> DB[Core NT database]
-D --> E[Build Consensus Sequences]
-E --> F[Qualimap]
-E --> G[Build tree]
-DA --> G
-G --> H[Collect Reports]
+DA --> E[Build consensus sequences]
+E --> F[Map reads to consensus]
+F --> G[Qualimap]
+E --> J[Build tree]
+J --> H[Collect Reports]
 ```
 
 ## Usage
