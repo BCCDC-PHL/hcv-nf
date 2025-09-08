@@ -15,7 +15,7 @@ DA --> E[Build consensus sequences]
 E --> F[Map reads to consensus]
 F --> G[Qualimap]
 E --> J[Build tree]
-J --> H[Collect Reports]
+G --> H[Collect Reports]
 ```
 
 ## Usage
