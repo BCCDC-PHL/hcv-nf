@@ -123,7 +123,7 @@ process blastn_and_filter {
     memory { 55.GB }
     tag { sample_id }
 
-    publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}*", mode:'copy'
+    publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}_*", mode:'copy'
 
     input:
     tuple val(sample_id), path(contigs_fasta),path(ref_seqs_db)             
@@ -171,7 +171,8 @@ process makeconsensus {
     tuple val(sample_id), path(reads_1), path(reads_2), path(ref_seq_map), path(db)
 
     output:
-    tuple val(sample_id), path("${sample_id}/${sample_id}*.bam*"), emit: alignment, optional: true
+    tuple val(sample_id), path("${sample_id}/${sample_id}*.bam"), emit: alignment, optional: true
+    tuple val(sample_id), path("${sample_id}/${sample_id}*_variants.vcf.gz"), emit: sites, optional: true
     tuple val(sample_id), path("${sample_id}/${sample_id}_consensus_seqs_report.tsv"), emit: consensus_seqs_report, optional: true
     tuple val(sample_id), path("${sample_id}/${sample_id}_consensus_seqs.fa"), emit: consensus_seqs, optional: true
     tuple val(sample_id), path("${sample_id}/logs"), emit: fluviewer_logs
@@ -183,7 +184,34 @@ process makeconsensus {
 
 }
 
+process igvreport {
 
+    tag {sample_id}
+
+    publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}_igv_report.html", mode:'copy'
+
+    input:
+    tuple val(sample_id), path(vcf_sites), path(bam_file),path(ref_mapping)
+
+    output:
+    tuple val(sample_id), path("${sample_id}*.html"), emit: igv_report, optional: true
+
+    """
+    samtools faidx ${ref_mapping}
+    samtools index ${bam_file}
+    bcftools index ${vcf_sites}
+
+    create_report ${vcf_sites} \
+     --fasta ${ref_mapping} \
+     --flanking 1000 \
+     --tracks ${vcf_sites} ${bam_file} \
+     --output ${sample_id}_igv_report.html
+
+    """
+
+
+
+}
 process blastconsensus {
 
     errorStrategy 'ignore'

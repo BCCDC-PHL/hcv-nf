@@ -11,6 +11,7 @@ include { fastp }               from './modules/qc.nf'
 include { blastn_and_filter }   from './modules/hcv.nf'
 include { assemble }            from './modules/hcv.nf'
 include { cutadapter }          from './modules/qc.nf'
+include { igvreport }          from './modules/hcv.nf'
 //include { genotype }            from './modules/hcv.nf'
 include { makeconsensus }       from './modules/hcv.nf'
 include { blastconsensus }      from './modules/hcv.nf'
@@ -56,7 +57,7 @@ workflow{
     ch_fastq_input = Channel.fromFilePairs( params.fastq_search_path, flat: true ).map{ it -> [it[0].split('_')[0], it[1], it[2]] }.unique{ it -> it[0] }
     ch_nt = Channel.fromPath(params.nt_dir)
     ch_db_name = Channel.of(params.db_name)
-
+    ch_repstrain = Channel.of(params.repstrain)
 
     main:
 
@@ -81,9 +82,11 @@ workflow{
     ch_contigs = blastn_and_filter.out.filtered_contigs.combine(ch_ref_core).combine(ch_ref_ns5b)
     findamplicon(ch_contigs)
     ch_consensus = makeconsensus(cutadapter.out.out_reads.combine(findamplicon.out.ref_seqs_mapping, by : 0).combine(ch_db))
+    igvreport(ch_consensus.sites.join(ch_consensus.alignment).join(findamplicon.out.ref_seqs_mapping))
     ch_nt_calls = blastconsensus(ch_consensus.consensus_seqs.combine(ch_nt).combine(ch_db_name))
-    mafftraxmltree(makeconsensus.out.consensus_seqs.combine(ch_ref_core).combine(ch_ref_ns5b))
-    plot_tree_input = mafftraxmltree.out.core_besttree.mix(mafftraxmltree.out.ns5b_besttree)
+    mafftraxmltree(makeconsensus.out.consensus_seqs.combine(ch_ref_core).combine(ch_ref_ns5b).combine(ch_repstrain))
+    plot_tree_input = mafftraxmltree.out.core_besttree.mix(mafftraxmltree.out.ns5b_besttree).flatMap {sample_id, files -> files.collect{file -> tuple(sample_id,file)}}
+    plot_tree_input.view()
     plot_tree(plot_tree_input)
     QualiMap(makeconsensus.out.alignment)
     ch_qc = parseQMresults(QualiMap.out.genome_results)

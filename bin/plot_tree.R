@@ -53,9 +53,9 @@ tree <- read.tree(tree_file)
 
 node_data <- as_tibble(tree)
 
+pattern <- ifelse(grepl("core",tree_type),"core","ns5b")
 
-
-highlighted <- node_data[grepl(tree_type,node_data$label),]$label
+highlighted <- node_data[grepl(pattern,node_data$label),]$label
 tip_df <- data.frame(label = tree$tip.label,
                      highlight = ifelse(tree$tip.label == highlighted, "yes", "no"))
 
@@ -88,6 +88,11 @@ if(!is.null(clade_nodes)){
     scale_color_manual(values = c("yes" = "red", "no" = "black")) 
 }
 
-ggsave(paste0(sample_id,"_",tree_type,"_tree.png"), p, width = 8, height = 20, units = "in", dpi = 300)
+if(grepl("subtype",tree_type)){
+  ggsave(paste0(sample_id,"_",tree_type,"_tree.png"), p, width = 8, height = 10, units = "in", dpi = 300)
+}else{
+  ggsave(paste0(sample_id,"_",tree_type,"_tree.png"), p, width = 8, height = 18, units = "in", dpi = 300)
+
+}
 
 

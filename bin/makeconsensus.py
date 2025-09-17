@@ -456,18 +456,18 @@ def garbage_collection(output):
     sam_out = os.path.join(output, output + '_alignment.sam')
     os.remove(sam_out)
     #ref_seqs = os.path.join(output, output + '_ref_seqs_for_mapping.fa')
-    vcf_out = os.path.join(output, output + '_variants.vcf.gz')
-    low_cov = os.path.join(output, output + '_low_cov.bed')
+    #vcf_out = os.path.join(output, output + '_variants.vcf.gz')
+    #low_cov = os.path.join(output, output + '_low_cov.bed')
     #files = [ref_seqs + suffix for suffix in ['.amb', '.ann', '.bwt', '.fai', '.pac', '.sa']]
-    files = [vcf_out + suffix for suffix in ['', '.csi']]
-    files += [low_cov]
-    for file in files:
-        os.remove(file)
-    bam_out = os.path.join(output, output + '_alignment_filtered_sorted.bam')
-    idxstats = os.path.join(output, output + '_reads_mapped_to_consensus_seqs.tsv')
-    files = [bam_out + suffix for suffix in ['.bai']] + [idxstats]
-    for file in files:
-        os.remove(file)
+    #files = [vcf_out + suffix for suffix in ['', '.csi']]
+    #files += [low_cov]
+    #for file in files:
+    #    os.remove(file)
+    #bam_out = os.path.join(output, output + '_alignment_filtered_sorted.bam')
+    #idxstats = os.path.join(output, output + '_reads_mapped_to_consensus_seqs.tsv')
+    #files = [bam_out + suffix for suffix in ['.bai']] + [idxstats]
+    #for file in files:
+    #    os.remove(file)
 
 
 if __name__ == '__main__':
