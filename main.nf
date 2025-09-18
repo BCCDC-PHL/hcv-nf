@@ -89,7 +89,7 @@ workflow{
     ch_core_besttree = mafftraxmltree.out.core_besttree
     ch_ns5b_besttree = mafftraxmltree.out.ns5b_besttree
     ch_core_besttree.view()
-    plot_tree_input = ch_core_besttree.mix(ch_ns5b_besttree).flatMap {sample_id, files -> files.collect { file -> tuple(groupKey(sample_id, files.size()), file)}}
+    plot_tree_input = ch_core_besttree.mix(ch_ns5b_besttree).flatMap {sample_id, files -> files.collect { file -> tuple(sample_id, file)}}
     //plot_tree_input = mafftraxmltree.out.core_besttree.mix(mafftraxmltree.out.ns5b_besttree).flatMap{sample_id, files -> files.collect{file -> tuple(sample_id,file.toAbsolutePath().toString())}}
     plot_tree_input.view()
     plot_tree(plot_tree_input)
