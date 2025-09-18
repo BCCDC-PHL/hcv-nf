@@ -84,8 +84,13 @@ workflow{
     ch_consensus = makeconsensus(cutadapter.out.out_reads.combine(findamplicon.out.ref_seqs_mapping, by : 0).combine(ch_db))
     igvreport(ch_consensus.sites.join(ch_consensus.alignment).join(findamplicon.out.ref_seqs_mapping))
     ch_nt_calls = blastconsensus(ch_consensus.consensus_seqs.combine(ch_nt).combine(ch_db_name))
+
     mafftraxmltree(makeconsensus.out.consensus_seqs.combine(ch_ref_core).combine(ch_ref_ns5b).combine(ch_repstrain))
-    plot_tree_input = mafftraxmltree.out.core_besttree.mix(mafftraxmltree.out.ns5b_besttree).flatMap{sample_id, files -> files.collect{file -> tuple(sample_id,file.toAbsolutePath().toString())}}
+    ch_core_besttree = mafftraxmltree.out.core_besttree
+    ch_ns5b_besttree = mafftraxmltree.out.ns5b_besttree
+    ch_core_besttree.view()
+    plot_tree_input = Channel.of(ch_core_besttree,ch_ns5b_besttree).flatMap {sample_id, files -> files.collect { file -> tuple(groupKey(sample_id, files.size()), file)}}
+    //plot_tree_input = mafftraxmltree.out.core_besttree.mix(mafftraxmltree.out.ns5b_besttree).flatMap{sample_id, files -> files.collect{file -> tuple(sample_id,file.toAbsolutePath().toString())}}
     plot_tree_input.view()
     plot_tree(plot_tree_input)
     QualiMap(makeconsensus.out.alignment)
