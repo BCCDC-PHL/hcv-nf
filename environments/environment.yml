@@ -16,7 +16,7 @@ dependencies:
   - seqkit=2.2.0
   - perl-digest-sha=5.88
   - fastp=0.23.1
-  - multiqc=1.12
+  - fastqc
   - perl-list-moreutils=0.430
   - mafft=7.508
   - raxml=8.2.12
