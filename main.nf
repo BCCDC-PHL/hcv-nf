@@ -62,11 +62,11 @@ workflow{
     main:
 
     hash_files(ch_fastq_input.map{ it -> [it[0], [it[1], it[2]]] }.combine(Channel.of("fastq_input")))
-    //pre_fastqc(ch_fastq_input)
+    pre_fastqc(ch_fastq_input)
     fastp( ch_fastq_input )
     
     cutadapter(ch_fastq_input.combine(ch_adapters))
-    //post_fastqc(cutadapter.out.out_reads)
+    post_fastqc(cutadapter.out.out_reads)
     //bbdukclean(cutadapter.out.out_reads.combine(ch_artifacts))
 
     ch_maprawreads = maprawreads(cutadapter.out.out_reads.combine(ch_db)) //mapping raw reads to all 237 HCV references for debugging purposes, checking how reads mapped to core/ns5b regions
@@ -82,7 +82,7 @@ workflow{
     ch_contigs = blastn_and_filter.out.filtered_contigs.combine(ch_ref_core).combine(ch_ref_ns5b)
     findamplicon(ch_contigs)
     ch_consensus = makeconsensus(cutadapter.out.out_reads.combine(findamplicon.out.ref_seqs_mapping, by : 0).combine(ch_db))
-    igvreport(ch_consensus.sites.join(ch_consensus.alignment).join(findamplicon.out.ref_seqs_mapping))
+    //igvreport(ch_consensus.sites.join(ch_consensus.alignment).join(findamplicon.out.ref_seqs_mapping))
     ch_nt_calls = blastconsensus(ch_consensus.consensus_seqs.combine(ch_nt).combine(ch_db_name))
 
     mafftraxmltree(makeconsensus.out.consensus_seqs.combine(ch_ref_core).combine(ch_ref_ns5b).combine(ch_repstrain))
