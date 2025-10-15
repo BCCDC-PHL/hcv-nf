@@ -1,4 +1,5 @@
 process assemble {
+    errorStrategy 'ignore'
 
     tag { sample_id }
     
@@ -119,7 +120,7 @@ process assemble_shovill {
 
 
 process blastn_and_filter {
-    //errorStrategy 'ignore'
+    errorStrategy 'ignore'
     memory { 55.GB }
     tag { sample_id }
 
