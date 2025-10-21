@@ -28,7 +28,6 @@ process fastp {
       -o ${sample_id}_trim_R1.fastq.gz \
       -O ${sample_id}_trim_R2.fastq.gz \
       --detect_adapter_for_pe \
-      --cut_tail \
       --trim_poly_g \
       --overrepresentation_analysis \
       --report_title "fastp report: ${sample_id}" \
