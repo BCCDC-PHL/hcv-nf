@@ -103,8 +103,8 @@ process cutadapter {
       ${reads_2}\
       > ${sample_id}.cutadapt.log
 
-    cutadapt -b 'GGGGGGGGGGGGGGGGGGGG' -o ${sample_id}_out_R1.fastq.gz -e 0.3 tmp_R1.fastq.gz >> ${sample_id}.cutadapt.log
-    cutadapt -b 'GGGGGGGGGGGGGGGGGGGG' -o ${sample_id}_out_R2.fastq.gz -e 0.3 tmp_R2.fastq.gz >> ${sample_id}.cutadapt.log
+    cutadapt --nextseq-trim=20 -o ${sample_id}_out_R1.fastq.gz tmp_R1.fastq.gz >> ${sample_id}.cutadapt.log
+    cutadapt --nextseq-trim=20 -o ${sample_id}_out_R2.fastq.gz tmp_R2.fastq.gz >> ${sample_id}.cutadapt.log
     """
 }
 
