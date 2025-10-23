@@ -97,11 +97,14 @@ process cutadapter {
       -j ${task.cpus} \
       -b file:${adapters} \
       -B file:${adapters} \
-      -o ${sample_id}_out_R1.fastq.gz \
-      -p ${sample_id}_out_R2.fastq.gz \
+      -o tmp_R1.fastq.gz \
+      -p tmp_R2.fastq.gz \
       ${reads_1}\
       ${reads_2}\
       > ${sample_id}.cutadapt.log
+
+    cutadapt -b 'GGGGGGGGGGGGGGGGGGGG' -o ${sample_id}_out_R1.fastq.gz -e 0.3 tmp_R1.fastq.gz >> ${sample_id}.cutadapt.log
+    cutadapt -b 'GGGGGGGGGGGGGGGGGGGG' -o ${sample_id}_out_R2.fastq.gz -e 0.3 tmp_R2.fastq.gz >> ${sample_id}.cutadapt.log
     """
 }
 
