@@ -135,11 +135,10 @@ def filter_alignments(output, blast_out, min_cov, min_id):
 
     #parse blast results
     counts = blast_results['subtype'].value_counts().reset_index()
-    print(counts)
-    counts=counts.rename(columns = {'subtype' : 'counts','index':'subtype'})
+    counts=counts.rename(columns = {'count' : 'counts','index':'subtype'})
     total=counts[['counts']].sum()
-
-    counts['prop'] = counts['counts'].apply(lambda x: x/total)
+  
+    counts['prop'] = counts['counts']/total
     max_bitscore = blast_results[['subtype','bitscore']].groupby('subtype').max().reset_index()
     bit_df = pd.merge(counts,max_bitscore,how ='left', on='subtype')
     bit_df=bit_df.rename(columns = {'bitscore': 'max_bitscore'})
