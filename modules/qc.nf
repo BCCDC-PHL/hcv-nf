@@ -95,19 +95,15 @@ process cutadapter {
 
     cutadapt \
       -j ${task.cpus} \
+      --nextseq-trim=20 -m 1 \
       -b file:${adapters} \
       -B file:${adapters} \
-      -o tmp_R1.fastq.gz \
-      -p tmp_R2.fastq.gz \
+      -o ${sample_id}_out_R1.fastq.gz \
+      -p ${sample_id}_out_R2.fastq.gz \
       ${reads_1}\
       ${reads_2}\
       > ${sample_id}.cutadapt.log
-
-    cutadapt --nextseq-trim=20 -m 1 \
-      -o ${sample_id}_out_R1.fastq.gz \
-      -p ${sample_id}_out_R2.fastq.gz \
-      tmp_R1.fastq.gz tmp_R2.fastq.gz >> ${sample_id}.cutadapt.log
-
+      
     """
 }
 
