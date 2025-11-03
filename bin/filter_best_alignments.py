@@ -135,7 +135,7 @@ def filter_alignments(output, blast_out, min_cov, min_id):
 
     #parse blast results
     counts = blast_results['subtype'].value_counts().reset_index()
-    counts=counts.rename(columns = {'count' : 'counts','index':'subtype'})
+    counts.columns = ['subtype','counts']
     total=counts[['counts']].sum()
   
     counts['prop'] = counts['counts']/total
