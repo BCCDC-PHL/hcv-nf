@@ -2,7 +2,7 @@ process fastp {
 
     tag { sample_id }
 
-    publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}*.trim.fastq.gz", mode:'copy'
+    //publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}*.trim.fastq.gz", mode:'copy'
     publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}_fastp.*", mode:'copy'
 
     input:
@@ -77,7 +77,7 @@ process cutadapter {
 
     tag { sample_id }
 
-    publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}*.out.fastq.gz", mode:'copy'
+    //publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}*.out.fastq.gz", mode:'copy'
     publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}.cutadapt.log", mode:'copy'
 
     input:
@@ -107,37 +107,16 @@ process cutadapter {
     """
 }
 
-process bbdukclean {
 
-    tag { sample_id }
-
-    publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}*.cleaned.fastq.gz", mode:'copy'
-
-    input:
-    tuple val(sample_id), path(reads_1), path(reads_2), path(artifacts)
-
-    output:
-    tuple val(sample_id), path("${sample_id}_R1.cleaned.fastq.gz"), path("${sample_id}_R2.cleaned.fastq.gz"), emit: cleaned_reads
-
-    script:
-    """
-    bbduk.sh in=${reads_1} in2=${reads_2} out=${sample_id}_R1.cleaned.fastq.gz out2=${sample_id}_R2.cleaned.fastq.gz ref=adapter,artifacts tbo tpe hdist=1 ktrim=r mink=11 qtrim=rl trimq=10 trimpolyg=10 entropy=0.7
-   
-    """
-}
 
 process maprawreads {
     
     errorStrategy 'ignore'
-    //publishDir "${params.outdir}/${sample_id}/debug", pattern: "${sample_id}_mapped_to_db.bam*", mode:'copy'
-    //publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}_core_ns5b_mapped_reads.csv", mode:'copy'
-    //publishDir "${params.outdir}/${sample_id}/debug", pattern: "${sample_id}_mapped_to_db.depth", mode:'copy'
 
     input:
     tuple val(sample_id), path(reads_1), path(reads_2), path(ref)
 
     output:
-    //tuple val(sample_id), path("${sample_id}_mapped_to_db.bam*"), emit: readsbam, optional: true
     tuple val(sample_id), path("${sample_id}_core_ns5b_mapped_reads.csv"), emit: mappedreads, optional: true
     tuple val(sample_id), path("${sample_id}_mapped_to_db.depth"), emit: dbdepth, optional: true
 
