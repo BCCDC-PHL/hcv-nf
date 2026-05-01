@@ -37,9 +37,10 @@ def main(args):
 
     qc_report = pd.merge(consensus_report['consensus_seq'],qc_report, left_on="consensus_seq", right_on="contig",how='left')
     qc_report_reduced = qc_report[["sample_id","amplicon","total_mapped_bases","mean_coverage","std_coverage","proportion_genome_covered_over_20x"]]
-    qc_report_reduced[['mean_coverage']] = round(qc_report_reduced[['mean_coverage']]).astype(int)
-    qc_report_reduced[['std_coverage']] = round(qc_report_reduced[['std_coverage']]).astype(int)
-    qc_report_reduced[['proportion_genome_covered_over_20x']] = round(qc_report_reduced[['proportion_genome_covered_over_20x']],2)
+    qc_report_reduced.loc[:, 'mean_coverage'] = (qc_report_reduced['mean_coverage'].round().astype(int))
+    qc_report_reduced.loc[:, 'std_coverage'] = (qc_report_reduced['std_coverage'].round().astype(int))
+    qc_report_reduced.loc[:, 'proportion_genome_covered_over_20x'] = (qc_report_reduced['proportion_genome_covered_over_20x'].round(2).astype(int))
+
     qc_report_reduced =  qc_report_reduced.astype(str)
     qc_report_concat = qc_report_reduced.groupby(['sample_id', 'amplicon']).agg({'total_mapped_bases': [('total_mapped_bases', '|'.join)],'mean_coverage':[('mean_coverage','|'.join)],'std_coverage':[('std_coverage','|'.join)],'proportion_genome_covered_over_20x':[('proportion_genome_covered_over_20x','|'.join)]}).reset_index()
     qc_report_concat = pd.DataFrame(qc_report_concat.values, columns=['sample_id','amplicon','total_mapped_bases','mean_coverage',"std_coverage","proportion_genome_covered_over_20x"])
@@ -86,8 +87,8 @@ def main(args):
         (merge7['core_subtype'].isna() | merge7['ns5b_subtype'].isna()),
         (merge7['ns5b_sequenced_bases'].notna()) & (merge7['ns5b_sequenced_bases'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 300),
         (merge7['core_sequenced_bases'].notna()) & (merge7['core_sequenced_bases'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 300),
-        (merge7['core_mean_coverage'].notna()) & (merge7['core_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 20),
-        (merge7['ns5b_mean_coverage'].notna()) & (merge7['ns5b_mean_coverage'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 20),
+        (merge7['core_mean_coverage'].notna()) & (merge7['core_mean_coverage'].astype(str).apply(lambda x: min(float(v) for v in x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 20),
+        (merge7['ns5b_mean_coverage'].notna()) & (merge7['ns5b_mean_coverage'].astype(str).apply(lambda x: min(float(v) for v in x.split('|'))).replace('nan',np.nan).fillna(0).astype(int) < 20),
         (merge7['core_proportion_genome_covered_over_20x'].notna()) & (merge7['core_proportion_genome_covered_over_20x'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(float) < 0.9),
         (merge7['ns5b_proportion_genome_covered_over_20x'].notna()) & (merge7['ns5b_proportion_genome_covered_over_20x'].astype(str).apply(lambda x: min(x.split('|'))).replace('nan',np.nan).fillna(0).astype(float) < 0.9),
 

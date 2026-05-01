@@ -152,9 +152,11 @@ process blastn_and_filter {
     # Run blastn alignment
     blastn -query ${contigs_fasta} -db ${ref_seqs_db} -outfmt "6 qseqid sseqid pident qlen slen mismatch gapopen qstart qend sstart send bitscore" > ${sample_id}_blast_results.tsv
     if [ -s ${sample_id}_blast_results.tsv ]; then
-    filter_best_alignments.py -o ${sample_id} -f ${sample_id}_blast_results.tsv -d ${ref_seqs_db} -m ${params.mode} -t ${contigs_fasta}
+        filter_best_alignments.py -o ${sample_id} -f ${sample_id}_blast_results.tsv -d ${ref_seqs_db} -m ${params.mode} -t ${contigs_fasta}
+        cd-hit -i ${sample_id}_filtered_contigs.fa -o cleaned.fasta -c 0.98
+        mv cleaned.fasta ${sample_id}_filtered_contigs.fa
     else
-    echo "blast result is empty"
+        echo "blast result is empty"
     fi
     
     """

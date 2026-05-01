@@ -1,65 +1,71 @@
 process mafftraxmltree {
-  errorStrategy 'ignore'
+    errorStrategy 'ignore'
 
-  tag { sample_id }
+    tag { sample_id }
 
-  publishDir "${params.outdir}/${sample_id}", pattern: "RAxML*", mode:'copy', saveAs: { filename -> filename.split("/").last() }
-  //publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}_mafftouput*", mode:'copy'
+    publishDir "${params.outdir}/${sample_id}", pattern: "RAxML*", mode:'copy', saveAs: { filename -> filename.split("/").last() }
+    //publishDir "${params.outdir}/${sample_id}", pattern: "${sample_id}_mafftouput*", mode:'copy'
+    input:
+    tuple val(sample_id), path(consensus), path(ref_core),path(ref_ns5b),path(rep_strains)
 
+    output:
+    tuple val(sample_id), path("RAxML_bestTree.${sample_id}_ns5b*"), emit: ns5b_besttree, optional: true
+    tuple val(sample_id), path("RAxML_bestTree.${sample_id}_core*"), emit: core_besttree, optional: true
+    //tuple val(sample_id), path("${sample_id}_mafftoutput*"), emit: msa, optional: true
+    //tuple val(sample_id), path("${sample_id}_mafftoutput_ns5b"), emit: ns5b_alignment, optional: true
 
-  input:
-  tuple val(sample_id), path(consensus), path(ref_core),path(ref_ns5b),path(rep_strains)
+    script:
+    
+    """
 
-  output:
-  tuple val(sample_id), path("RAxML_bestTree.${sample_id}_ns5b*"), emit: ns5b_besttree, optional: true
-  tuple val(sample_id), path("RAxML_bestTree.${sample_id}_core*"), emit: core_besttree, optional: true
-  //tuple val(sample_id), path("${sample_id}_mafftoutput*"), emit: msa, optional: true
-  //tuple val(sample_id), path("${sample_id}_mafftoutput_ns5b"), emit: ns5b_alignment, optional: true
+    grep -A1 '|core|' ${consensus} > ${sample_id}_core_consensus.fa
+    coregeno=\$(grep '^>' ${sample_id}_core_consensus.fa | cut -d'|' -f4 | cut -c 1 | uniq | paste -sd '|')
+    grep -A1 '|ns5b|' ${consensus} > ${sample_id}_ns5b_consensus.fa
+    ns5bgeno=\$(grep '^>' ${sample_id}_ns5b_consensus.fa | cut -d'|' -f4 | cut -c 1 | uniq | paste -sd '|')
 
-  script:
-  """
-  grep -A1 '|core|' ${consensus} > ${sample_id}_core_consensus.fa
-  coregeno=\$(grep '^>' ${sample_id}_core_consensus.fa | cut -d'|' -f4 | cut -c 1)
-  grep -A1 '|ns5b|' ${consensus} > ${sample_id}_ns5b_consensus.fa
-  ns5bgeno=\$(grep '^>' ${sample_id}_ns5b_consensus.fa | cut -d'|' -f4 | cut -c 1)
+    if [ -s ${sample_id}_core_consensus.fa ]; then
+      seqkit grep -f ${rep_strains} ${ref_core} > reduced_core_ref.fa
+      cat reduced_core_ref.fa ${sample_id}_core_consensus.fa > mafftinput_core.fa
+      mafft --thread 4 --auto mafftinput_core.fa > ${sample_id}_mafftoutput_core
+      raxmlHPC -f d -p 12345 -# 10 -s ${sample_id}_mafftoutput_core -m GTRGAMMA -n ${sample_id}_core -o 7_KU861171
 
-  if [ -s ${sample_id}_core_consensus.fa ]; then
-    grep -A 1 -f ${rep_strains} ${ref_core} | grep -v "^--" > reduced_core_ref.fa
-    cat reduced_core_ref.fa ${sample_id}_core_consensus.fa > mafftinput_core.fa
-    mafft --reorder --adjustdirection --anysymbol --thread 4 --auto mafftinput_core.fa > ${sample_id}_mafftoutput_core
-    raxmlHPC -f d -p 12345 -# 10 -s ${sample_id}_mafftoutput_core -m GTRCAT -n ${sample_id}_core -o 7_KU861171
+      awk -v g="\$coregeno" '/^>/ {f=(\$0 ~ "^>"g)} f' "${ref_core}" > subtype_core_ref.fa
+      seqkit sample -n 50 subtype_core_ref.fa > subtype_core_ref_down.fa
 
-    awk -v g="\$coregeno" '/^>/ {f=(\$0 ~ "^>"g)} f' "${ref_core}" > subtype_core_ref.fa
-    cat subtype_core_ref.fa ${sample_id}_core_consensus.fa > mafftinput_core_subtype.fa
-    if [ \$coregeno -ne "7" ];then
-      grep -A 1 ">7_KU861171" ${ref_core} >> mafftinput_core_subtype.fa
+      cat subtype_core_ref_down.fa ${sample_id}_core_consensus.fa > mafftinput_core_subtype.fa
+      if [ \$coregeno -ne "7" ];then
+        seqkit grep -nrp "7_KU861171" ${ref_core} >> mafftinput_core_subtype.fa
+      fi
+      mafft --thread 4 --auto mafftinput_core_subtype.fa > ${sample_id}_mafftoutput_core_subtype
+      raxmlHPC -f d -p 12345 -# 10 -s ${sample_id}_mafftoutput_core_subtype -m GTRGAMMA -n ${sample_id}_core_subtype -o 7_KU861171
+
     fi
-    mafft --reorder --adjustdirection --anysymbol --thread 4 --auto mafftinput_core_subtype.fa > ${sample_id}_mafftoutput_core_subtype
-    raxmlHPC -f d -p 12345 -# 10 -s ${sample_id}_mafftoutput_core_subtype -m GTRCAT -n ${sample_id}_core_subtype -o 7_KU861171
 
-  fi
+    if [ -s ${sample_id}_ns5b_consensus.fa ]; then
+      seqkit grep -f ${rep_strains} ${ref_ns5b} > reduced_ns5b_ref.fa
+      cat reduced_ns5b_ref.fa ${sample_id}_ns5b_consensus.fa > mafftinput_ns5b.fa
+      mafft  --thread 4 --auto mafftinput_ns5b.fa > ${sample_id}_mafftoutput_ns5b
+      raxmlHPC -f d -p 12345 -# 10 -s ${sample_id}_mafftoutput_ns5b -m GTRGAMMA -n ${sample_id}_ns5b -o 7_KU861171
 
-  if [ -s ${sample_id}_ns5b_consensus.fa ]; then
-    grep -A 1 -f ${rep_strains} ${ref_ns5b} | grep -v "^--" > reduced_ns5b_ref.fa
-    cat reduced_ns5b_ref.fa ${sample_id}_ns5b_consensus.fa > mafftinput_ns5b.fa
-    mafft --reorder --adjustdirection --anysymbol --thread 4 --auto mafftinput_ns5b.fa > ${sample_id}_mafftoutput_ns5b
-    raxmlHPC -f d -p 12345 -# 10 -s ${sample_id}_mafftoutput_ns5b -m GTRCAT -n ${sample_id}_ns5b -o 7_KU861171
-  
-    awk -v g="\$ns5bgeno" '/^>/ {f=(\$0 ~ "^>"g)} f' "${ref_ns5b}"  > subtype_ns5b_ref.fa
-    cat subtype_ns5b_ref.fa ${sample_id}_ns5b_consensus.fa > mafftinput_ns5b_subtype.fa
-    if [ \$ns5bgeno -ne "7" ];then
-      grep -A 1 ">7_KU861171" ${ref_ns5b} >> mafftinput_ns5b_subtype.fa
+      awk -v g="\$ns5bgeno" '/^>/ {f=(\$0 ~ "^>"g)} f' "${ref_ns5b}"  > subtype_ns5b_ref.fa
+      seqkit sample -n 50 subtype_ns5b_ref.fa > subtype_ns5b_ref_down.fa
+
+      cat subtype_ns5b_ref_down.fa ${sample_id}_ns5b_consensus.fa > mafftinput_ns5b_subtype.fa
+      if [ \$ns5bgeno -ne "7" ];then
+        seqkit grep -nrp "7_KU861171" ${ref_ns5b} >> mafftinput_ns5b_subtype.fa
+      fi
+      mafft  --thread 4 --auto mafftinput_ns5b_subtype.fa > ${sample_id}_mafftoutput_ns5b_subtype
+      raxmlHPC -f d -p 12345 -# 10 -s ${sample_id}_mafftoutput_ns5b_subtype -m GTRGAMMA -n ${sample_id}_ns5b_subtype -o 7_KU861171
+
     fi
-    mafft --reorder --adjustdirection --anysymbol --thread 4 --auto mafftinput_ns5b_subtype.fa > ${sample_id}_mafftoutput_ns5b_subtype
-    raxmlHPC -f d -p 12345 -# 10 -s ${sample_id}_mafftoutput_ns5b_subtype -m GTRCAT -n ${sample_id}_ns5b_subtype -o 7_KU861171
 
-  fi
-
-  """
+    """
 }
 
 process plot_tree {
     tag { sample_id }
+
+    errorStrategy 'ignore'
 
     publishDir "${params.outdir}/${sample_id}", mode: 'copy', pattern: "*.png"
 

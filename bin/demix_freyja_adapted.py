@@ -38,8 +38,7 @@ def demix(variants, depths, output, eps, barcodes, covcut):
 
     print('building mix/depth matrices')
     # assemble data from (possibly) mixed samples
-    mix, depths_, cov = build_mix_and_depth_arrays(variants, depths, muts,
-                                                   covcut)
+    mix, depths_, cov = build_mix_and_depth_arrays(variants, depths, muts,covcut)
     print('demixing')
     df_barcodes, mix, depths_ = reindex_dfs(df_barcodes, mix, depths_)
     sample_strains, abundances, error = solve_demixing_problem(df_barcodes,

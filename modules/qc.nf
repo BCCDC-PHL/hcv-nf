@@ -114,16 +114,19 @@ process maprawreads {
     errorStrategy 'ignore'
 
     input:
-    tuple val(sample_id), path(reads_1), path(reads_2), path(ref)
+    tuple val(sample_id), path(reads_1), path(reads_2), path(ref), path(blast_result)
 
     output:
     tuple val(sample_id), path("${sample_id}_core_ns5b_mapped_reads.csv"), emit: mappedreads, optional: true
     tuple val(sample_id), path("${sample_id}_mapped_to_db.depth"), emit: dbdepth, optional: true
 
     """
-    
-    bwa index ${ref}
-    bwa mem ${ref} ${reads_1} ${reads_2} > ${sample_id}_align.sam
+    tail -qn+2 ${blast_result} | cut -d',' -f3 > accession_ref
+
+    seqkit grep -f accession_ref ${ref} > ref.fa
+
+    bwa index ref.fa
+    bwa mem ref.fa ${reads_1} ${reads_2} > ${sample_id}_align.sam
     samtools view -f 1 -F 2316 -h ${sample_id}_align.sam | samtools sort -o ${sample_id}_mapped_to_db.bam
     samtools index ${sample_id}_mapped_to_db.bam
 
