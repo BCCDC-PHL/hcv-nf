@@ -25,3 +25,4 @@ dependencies:
   - taxonkit=0.14.2
   - igv-reports
   - cd-hit
+  - mash

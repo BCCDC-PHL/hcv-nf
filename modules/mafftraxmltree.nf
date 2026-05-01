@@ -30,9 +30,19 @@ process mafftraxmltree {
       raxmlHPC -f d -p 12345 -# 10 -s ${sample_id}_mafftoutput_core -m GTRGAMMA -n ${sample_id}_core -o 7_KU861171
 
       awk -v g="\$coregeno" '/^>/ {f=(\$0 ~ "^>"g)} f' "${ref_core}" > subtype_core_ref.fa
-      seqkit sample -n 50 subtype_core_ref.fa > subtype_core_ref_down.fa
+       
+      mash sketch -o query ${sample_id}_core_consensus.fa
+      mash sketch -o refmash -i subtype_core_ref.fa
+  
+      mash dist query.msh refmash.msh > distances.tab
 
-      cat subtype_core_ref_down.fa ${sample_id}_core_consensus.fa > mafftinput_core_subtype.fa
+      sort -k3,3n distances.tab | head -50 | cut -f2 > top50.list
+  
+      seqkit grep -f top50.list subtype_core_ref.fa > subtype_core_ref_top50.fa
+
+      cat ${sample_id}_core_consensus.fa >> subtype_core_ref_top50.fa
+
+      cat subtype_core_ref_top50.fa ${sample_id}_core_consensus.fa > mafftinput_core_subtype.fa
       if [ \$coregeno -ne "7" ];then
         seqkit grep -nrp "7_KU861171" ${ref_core} >> mafftinput_core_subtype.fa
       fi
@@ -48,9 +58,19 @@ process mafftraxmltree {
       raxmlHPC -f d -p 12345 -# 10 -s ${sample_id}_mafftoutput_ns5b -m GTRGAMMA -n ${sample_id}_ns5b -o 7_KU861171
 
       awk -v g="\$ns5bgeno" '/^>/ {f=(\$0 ~ "^>"g)} f' "${ref_ns5b}"  > subtype_ns5b_ref.fa
-      seqkit sample -n 50 subtype_ns5b_ref.fa > subtype_ns5b_ref_down.fa
+      
+      mash sketch -o query ${sample_id}_ns5b_consensus.fa
+      mash sketch -o refmash -i subtype_ns5b_ref.fa
+  
+      mash dist query.msh refmash.msh > distances.tab
 
-      cat subtype_ns5b_ref_down.fa ${sample_id}_ns5b_consensus.fa > mafftinput_ns5b_subtype.fa
+      sort -k3,3n distances.tab | head -50 | cut -f2 > ns5b_top50.list
+  
+      seqkit grep -f ns5b_top50.list subtype_ns5b_ref.fa > subtype_ns5b_ref_top50.fa
+
+      cat ${sample_id}_ns5b_consensus.fa >> subtype_ns5b_ref_top50.fa
+
+      cat subtype_ns5b_ref_top50.fa ${sample_id}_ns5b_consensus.fa > mafftinput_ns5b_subtype.fa
       if [ \$ns5bgeno -ne "7" ];then
         seqkit grep -nrp "7_KU861171" ${ref_ns5b} >> mafftinput_ns5b_subtype.fa
       fi
