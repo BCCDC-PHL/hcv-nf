@@ -40,8 +40,6 @@ process mafftraxmltree {
   
       seqkit grep -f top50.list subtype_core_ref.fa > subtype_core_ref_top50.fa
 
-      cat ${sample_id}_core_consensus.fa >> subtype_core_ref_top50.fa
-
       cat subtype_core_ref_top50.fa ${sample_id}_core_consensus.fa > mafftinput_core_subtype.fa
       if [ \$coregeno -ne "7" ];then
         seqkit grep -nrp "7_KU861171" ${ref_core} >> mafftinput_core_subtype.fa
@@ -67,8 +65,6 @@ process mafftraxmltree {
       sort -k3,3n distances.tab | head -50 | cut -f2 > ns5b_top50.list
   
       seqkit grep -f ns5b_top50.list subtype_ns5b_ref.fa > subtype_ns5b_ref_top50.fa
-
-      cat ${sample_id}_ns5b_consensus.fa >> subtype_ns5b_ref_top50.fa
 
       cat subtype_ns5b_ref_top50.fa ${sample_id}_ns5b_consensus.fa > mafftinput_ns5b_subtype.fa
       if [ \$ns5bgeno -ne "7" ];then

@@ -36,10 +36,11 @@ def main(args):
     #process qc results
 
     qc_report = pd.merge(consensus_report['consensus_seq'],qc_report, left_on="consensus_seq", right_on="contig",how='left')
+    
     qc_report_reduced = qc_report[["sample_id","amplicon","total_mapped_bases","mean_coverage","std_coverage","proportion_genome_covered_over_20x"]]
-    qc_report_reduced.loc[:, 'mean_coverage'] = (qc_report_reduced['mean_coverage'].round().astype(int))
-    qc_report_reduced.loc[:, 'std_coverage'] = (qc_report_reduced['std_coverage'].round().astype(int))
-    qc_report_reduced.loc[:, 'proportion_genome_covered_over_20x'] = (qc_report_reduced['proportion_genome_covered_over_20x'].round(2).astype(int))
+    qc_report_reduced.loc[:, 'mean_coverage'] = (qc_report_reduced['mean_coverage'].fillna(0).round().astype(int))
+    qc_report_reduced.loc[:, 'std_coverage'] = (qc_report_reduced['std_coverage'].fillna(0).round().astype(int))
+    qc_report_reduced.loc[:, 'proportion_genome_covered_over_20x'] = (qc_report_reduced['proportion_genome_covered_over_20x'].fillna(0).round(2).astype(float))
 
     qc_report_reduced =  qc_report_reduced.astype(str)
     qc_report_concat = qc_report_reduced.groupby(['sample_id', 'amplicon']).agg({'total_mapped_bases': [('total_mapped_bases', '|'.join)],'mean_coverage':[('mean_coverage','|'.join)],'std_coverage':[('std_coverage','|'.join)],'proportion_genome_covered_over_20x':[('proportion_genome_covered_over_20x','|'.join)]}).reset_index()
