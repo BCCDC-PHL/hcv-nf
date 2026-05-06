@@ -24,3 +24,5 @@ dependencies:
   - bbmap=38.98
   - taxonkit=0.14.2
   - igv-reports
+  - cd-hit
+  - mash

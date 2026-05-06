@@ -54,6 +54,10 @@ workflow{
     ch_db = Channel.fromPath(params.db)
     ch_ref_core = Channel.fromPath(params.ref_core)
     ch_ref_ns5b = Channel.fromPath(params.ref_ns5b)
+    ch_ictv_ref = Channel.fromPath(params.ictv_ref)
+
+    //ch_barcodes_core = Channel.fromPath(params.barcodes_core)
+    //ch_barcodes_ns5b = Channel.fromPath(params.barcodes_ns5b)
 
     ch_ref = Channel.fromPath(params.refhcv)
     ch_fastq_input = Channel.fromFilePairs( params.fastq_search_path, flat: true ).map{ it -> [it[0].split('_')[0], it[1], it[2]] }.unique{ it -> it[0] }
@@ -64,37 +68,37 @@ workflow{
     main:
 
     hash_files(ch_fastq_input.map{ it -> [it[0], [it[1], it[2]]] }.combine(Channel.of("fastq_input")))
+    //qc
     pre_fastqc(ch_fastq_input)
     fastp( ch_fastq_input )
-    
     cutadapter(ch_fastq_input.combine(ch_adapters))
     post_fastqc(cutadapter.out.out_reads)
-    //bbdukclean(cutadapter.out.out_reads.combine(ch_artifacts))
-
-    ch_maprawreads = maprawreads(cutadapter.out.out_reads.combine(ch_db)) //mapping raw reads to all 237 HCV references for debugging purposes, checking how reads mapped to core/ns5b regions
-                                                        
-    mapreadstoref(cutadapter.out.out_reads.combine(ch_ref)) //mapping raw reads to ref 1_AJ851228 for mix variant scan purpose
-
+   
+    ch_maprawreads = maprawreads(cutadapter.out.out_reads.combine(ch_ictv_ref))
     plotdepthdb(ch_maprawreads.dbdepth)
+    mapreadstoref(cutadapter.out.out_reads.combine(ch_ref))
     ch_mix = mixscan(mapreadstoref.out.alignment.combine(ch_ref))
+    //assembly and blast
     assemble(cutadapter.out.out_reads)  
     blastn_and_filter(assemble.out.contigs.combine(ch_db))
-    //genotype(ch_fastq_input.combine(ch_db))
-
+  
+    //map reads to the top assembled contigs and make consensus
     ch_contigs = blastn_and_filter.out.filtered_contigs.combine(ch_ref_core).combine(ch_ref_ns5b)
     findamplicon(ch_contigs)
     ch_consensus = makeconsensus(cutadapter.out.out_reads.combine(findamplicon.out.ref_seqs_mapping, by : 0).combine(ch_db))
-    //igvreport(ch_consensus.sites.join(ch_consensus.alignment).join(findamplicon.out.ref_seqs_mapping))
+
+    //blast againt core_nt db
     ch_nt_calls = blastconsensus(ch_consensus.consensus_seqs.combine(ch_nt).combine(ch_db_name))
 
+    //build and plot trees 
     mafftraxmltree(makeconsensus.out.consensus_seqs.combine(ch_ref_core).combine(ch_ref_ns5b).combine(ch_repstrain))
     ch_core_besttree = mafftraxmltree.out.core_besttree
     ch_ns5b_besttree = mafftraxmltree.out.ns5b_besttree
-    ch_core_besttree.view()
+    
     plot_tree_input = ch_core_besttree.mix(ch_ns5b_besttree).flatMap {sample_id, files -> files.collect { file -> tuple(sample_id, file)}}
-    //plot_tree_input = mafftraxmltree.out.core_besttree.mix(mafftraxmltree.out.ns5b_besttree).flatMap{sample_id, files -> files.collect{file -> tuple(sample_id,file.toAbsolutePath().toString())}}
-    plot_tree_input.view()
     plot_tree(plot_tree_input)
+
+    //post alignment quality control
     QualiMap(makeconsensus.out.alignment)
     ch_qc = parseQMresults(QualiMap.out.genome_results)
     segcov(makeconsensus.out.alignment)
@@ -117,7 +121,7 @@ workflow{
         .collectFile(it -> it[1], name: "combined_amplicon_mapped_reads_counts.csv", storeDir:params.outdir, keepHeader: true, skip: 1)
 
     report(ch_fastqlist.combine(ch_combined_consensus).combine(ch_combined_demix).combine(ch_combined_qc).combine(ch_count_mapped_reads).combine(ch_combined_genotype))
-
+    
     
     ch_provenance = assemble.out.provenance
     ch_provenance = ch_provenance.join(fastp.out.provenance).map{ it -> [it[0], [it[1] , it[2]]] }

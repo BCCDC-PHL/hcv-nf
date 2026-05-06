@@ -121,7 +121,6 @@ process maprawreads {
     tuple val(sample_id), path("${sample_id}_mapped_to_db.depth"), emit: dbdepth, optional: true
 
     """
-    
     bwa index ${ref}
     bwa mem ${ref} ${reads_1} ${reads_2} > ${sample_id}_align.sam
     samtools view -f 1 -F 2316 -h ${sample_id}_align.sam | samtools sort -o ${sample_id}_mapped_to_db.bam

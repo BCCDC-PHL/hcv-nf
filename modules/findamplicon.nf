@@ -20,7 +20,7 @@ process findamplicon {
   if [ -s core_contig.fa ]; then
     grep '>' core_contig.fa > core_name
     awk -F'|' 'BEGIN{OFS="_"} {print \$4,\$3}' core_name > core_segment
-    grep -A1 -f core_segment ${ref_core} > best_core_ref.fa
+    seqkit grep -f core_segment ${ref_core} > best_core_ref.fa
     findamplicon.py -i core_contig.fa -r best_core_ref.fa -o ref_seqs_for_mapping_core.fa -s ${sample_id}
   fi
 
@@ -28,7 +28,7 @@ process findamplicon {
 
   if [ -s ns5b_contig.fa ]; then
     grep '>' ns5b_contig.fa | awk -F'|' 'BEGIN{OFS="_"} {print \$4,\$3}' > ns5b_segment
-    grep -A1 -f ns5b_segment ${ref_ns5b} > best_ns5b_ref.fa
+    seqkit grep -f ns5b_segment ${ref_ns5b} > best_ns5b_ref.fa
     findamplicon.py -i ns5b_contig.fa -r best_ns5b_ref.fa -o ref_seqs_for_mapping_ns5b.fa -s ${sample_id}
   fi
 
